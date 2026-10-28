@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { EmptyState, PageHeader, Section } from "@/components/Shell";
+import { EmptyState, PageHeader, Section, StatCard } from "@/components/Shell";
 import { StatusPill } from "@/components/StatusPill";
 import { Icon } from "@/components/Icon";
 import { STATUS_META, STATUS_ORDER } from "@/lib/constants";
@@ -14,36 +14,6 @@ type Attention = {
   reason: string;
   tone: "danger" | "warn" | "info";
 };
-
-function StatCard({
-  label,
-  value,
-  hint,
-  accent = false,
-}: {
-  label: string;
-  value: string | number;
-  hint?: string;
-  accent?: boolean;
-}) {
-  return (
-    <div
-      className={`card px-4 py-3.5 ${accent ? "ring-1 ring-brand/25" : ""}`}
-    >
-      <div className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-muted">
-        {label}
-      </div>
-      <div
-        className={`mono mt-1.5 text-[26px] font-semibold leading-none ${
-          accent ? "text-brand" : "text-fg"
-        }`}
-      >
-        {value}
-      </div>
-      {hint && <div className="mt-1.5 text-[11px] text-muted">{hint}</div>}
-    </div>
-  );
-}
 
 export default async function DashboardPage() {
   const user = await requireUser();
@@ -104,11 +74,7 @@ export default async function DashboardPage() {
       const d = daysUntil(job.deadline);
       if (d !== null) {
         if (d < 0 && job.status === "saved") {
-          attention.push({
-            job,
-            reason: `Deadline passed ${Math.abs(d)}d ago`,
-            tone: "danger",
-          });
+          attention.push({ job, reason: `Deadline passed ${Math.abs(d)}d ago`, tone: "danger" });
           continue;
         }
         if (d >= 0 && d <= 3) {
@@ -125,19 +91,15 @@ export default async function DashboardPage() {
     if (job.status === "applied") {
       const stale = daysSince(job.updated_at);
       if (stale !== null && stale >= 7) {
-        attention.push({
-          job,
-          reason: `Applied ${stale}d ago — follow up?`,
-          tone: "info",
-        });
+        attention.push({ job, reason: `Applied ${stale}d ago — follow up?`, tone: "info" });
       }
     }
   }
 
   const toneStyles: Record<Attention["tone"], string> = {
-    danger: "text-rose-300 border-rose-400/25 bg-rose-400/10",
-    warn: "text-amber-300 border-amber-400/25 bg-amber-400/10",
-    info: "text-sky-300 border-sky-400/25 bg-sky-400/10",
+    danger: "text-danger border-danger/25 bg-danger-soft",
+    warn: "text-warn border-warn/25 bg-warn-soft",
+    info: "text-info border-info/25 bg-info-soft",
   };
 
   // ── Source breakdown ───────────────────────────────────────
@@ -154,8 +116,9 @@ export default async function DashboardPage() {
     return (
       <>
         <PageHeader
-          title={`Welcome${user.email ? `, ${user.email.split("@")[0]}` : ""}`}
-          subtitle="Your application pipeline starts here."
+          eyebrow="Welcome"
+          title={`Hello${user.email ? `, ${user.email.split("@")[0]}` : ""}`}
+          subtitle="Your application pipeline starts here. Capture your first job post and we'll take it from there."
           action={{ href: "/jobs/new", label: "Add first job" }}
         />
         <EmptyState
@@ -163,17 +126,17 @@ export default async function DashboardPage() {
           body="Add a job manually, or install the browser extension and capture any post — BDJobs, LinkedIn, or a Facebook group screenshot — in two clicks."
           cta={{ href: "/jobs/new", label: "Add your first job" }}
         />
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="mt-6 grid gap-3 sm:grid-cols-3 stagger">
           {[
             { t: "1 · Capture", d: "Extension grabs the post text + screenshot." },
             { t: "2 · Confirm", d: "AI fills the fields; you fix anything wrong." },
             { t: "3 · Track", d: "Move it through the board as you progress." },
           ].map((s) => (
-            <div key={s.t} className="card px-4 py-3.5">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-brand">
+            <div key={s.t} className="card px-5 py-4">
+              <div className="font-mono text-[11px] font-semibold uppercase tracking-wider text-accent">
                 {s.t}
               </div>
-              <div className="mt-1 text-xs text-muted">{s.d}</div>
+              <div className="mt-1.5 text-[13px] leading-relaxed text-muted">{s.d}</div>
             </div>
           ))}
         </div>
@@ -184,21 +147,24 @@ export default async function DashboardPage() {
   return (
     <div className="animate-in">
       <PageHeader
+        eyebrow="Overview"
         title="Dashboard"
         subtitle={`${total} job${total === 1 ? "" : "s"} tracked · ${thisWeek} added this week`}
         action={{ href: "/jobs/new", label: "Add job" }}
       />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <StatCard label="In pipeline" value={active} hint={`${total} total tracked`} />
+      {/* Bento stat grid */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5 stagger">
+        <StatCard label="In pipeline" value={active} hint={`${total} total tracked`} accent />
         <StatCard label="Applied" value={byStatus.applied ?? 0} hint="waiting for reply" />
         <StatCard label="OA / Interview" value={interviews} hint="in progress" />
-        <StatCard label="Offers" value={offers} hint={offers > 0 ? "🎉" : "keep going"} accent={offers > 0} />
+        <StatCard label="Offers" value={offers} hint={offers > 0 ? "🎉 congrats" : "keep going"} accent={offers > 0} />
         <StatCard label="Response rate" value={`${responseRate}%`} hint={`${responded} of ${progressed} replied`} />
       </div>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
+          {/* Needs attention */}
           <Section
             title="Needs attention"
             right={
@@ -206,22 +172,22 @@ export default async function DashboardPage() {
             }
           >
             {attention.length === 0 ? (
-              <div className="px-4 py-8 text-center text-xs text-muted">
-                Nothing urgent. Nice.
+              <div className="px-5 py-10 text-center text-[13px] text-muted">
+                Nothing urgent. Nice work.
               </div>
             ) : (
-              <ul className="divide-y divide-line/60">
+              <ul className="divide-y divide-line">
                 {attention.slice(0, 6).map((a) => (
                   <li key={a.job.id}>
                     <Link
                       href={`/jobs/${a.job.id}`}
-                      className="flex items-center gap-3 px-4 py-3 transition hover:bg-panel2/50"
+                      className="group flex items-center gap-3 px-5 py-3.5 transition hover:bg-surface-2/50"
                     >
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-[13px] font-medium">
+                        <div className="truncate text-[13.5px] font-medium text-fg">
                           {a.job.title || "(untitled role)"}
                         </div>
-                        <div className="truncate text-[11.5px] text-muted">
+                        <div className="truncate text-[12px] text-muted">
                           {a.job.company || "Unknown company"}
                         </div>
                       </div>
@@ -230,6 +196,11 @@ export default async function DashboardPage() {
                       >
                         {a.reason}
                       </span>
+                      <Icon
+                        name="external"
+                        size={13}
+                        className="shrink-0 text-muted-2 opacity-0 transition group-hover:opacity-100"
+                      />
                     </Link>
                   </li>
                 ))}
@@ -237,39 +208,41 @@ export default async function DashboardPage() {
             )}
           </Section>
 
+          {/* Recent activity */}
           <Section title="Recent activity">
             {activities.length === 0 ? (
-              <div className="px-4 py-8 text-center text-xs text-muted">
+              <div className="px-5 py-10 text-center text-[13px] text-muted">
                 No activity yet.
               </div>
             ) : (
-              <ul className="divide-y divide-line/60">
+              <ul className="divide-y divide-line">
                 {activities.map((a) => {
                   const job = jobs.find((j) => j.id === a.job_id);
                   return (
-                    <li key={a.id} className="flex items-start gap-3 px-4 py-2.5">
-                      <Icon
-                        name={a.kind === "status" ? "columns" : a.kind === "note" ? "note" : "plus"}
-                        size={13}
-                        className="mt-0.5 shrink-0 text-muted"
-                      />
+                    <li key={a.id} className="flex items-start gap-3 px-5 py-3">
+                      <div className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md bg-surface-2 text-muted">
+                        <Icon
+                          name={a.kind === "status" ? "columns" : a.kind === "note" ? "note" : "plus"}
+                          size={12}
+                        />
+                      </div>
                       <div className="min-w-0 flex-1">
-                        <div className="text-[12.5px]">
+                        <div className="text-[13px] leading-relaxed">
                           {a.kind === "status" ? (
                             <>
                               Moved{" "}
-                              <span className="text-fg">
+                              <span className="font-medium text-fg">
                                 {truncate(job?.company || job?.title || "job", 40)}
                               </span>{" "}
                               to{" "}
-                              <span className="font-medium text-brand">
+                              <span className="font-medium text-accent">
                                 {STATUS_META[(a.to_status as Status) ?? "saved"]?.label}
                               </span>
                             </>
                           ) : a.kind === "note" ? (
                             <>
                               Note on{" "}
-                              <span className="text-fg">
+                              <span className="font-medium text-fg">
                                 {truncate(job?.company || job?.title || "job", 40)}
                               </span>
                               : “{truncate(a.note, 48)}”
@@ -277,20 +250,20 @@ export default async function DashboardPage() {
                           ) : (
                             <>
                               Added{" "}
-                              <span className="text-fg">
+                              <span className="font-medium text-fg">
                                 {truncate(job?.company || job?.title || "a job", 40)}
                               </span>
                             </>
                           )}
                         </div>
-                        <div className="text-[10.5px] text-muted">
+                        <div className="mt-0.5 text-[11px] text-muted-2">
                           {relativeTime(a.happened_at)}
                         </div>
                       </div>
                       {job && (
                         <Link
                           href={`/jobs/${job.id}`}
-                          className="shrink-0 text-muted transition hover:text-brand"
+                          className="shrink-0 text-muted-2 transition hover:text-accent"
                           aria-label="Open job"
                         >
                           <Icon name="external" size={13} />
@@ -305,15 +278,16 @@ export default async function DashboardPage() {
         </div>
 
         <div className="space-y-4">
+          {/* Pipeline */}
           <Section title="Pipeline">
-            <div className="space-y-2.5 px-4 py-4">
+            <div className="space-y-3 px-5 py-5">
               {STATUS_ORDER.filter((s) => (byStatus[s] ?? 0) > 0).map((s) => (
                 <div key={s}>
-                  <div className="mb-1 flex items-center justify-between text-[11.5px]">
+                  <div className="mb-1.5 flex items-center justify-between text-[12px]">
                     <span className="text-muted">{STATUS_META[s].label}</span>
                     <span className="mono text-fg">{byStatus[s]}</span>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-ink2">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-surface-3">
                     <div
                       className={`h-full rounded-full ${STATUS_META[s].bar}`}
                       style={{
@@ -323,18 +297,22 @@ export default async function DashboardPage() {
                   </div>
                 </div>
               ))}
+              {STATUS_ORDER.every((s) => (byStatus[s] ?? 0) === 0) && (
+                <div className="text-center text-[12px] text-muted-2">No jobs yet</div>
+              )}
             </div>
           </Section>
 
+          {/* Sources */}
           <Section title="Sources">
             {sourceEntries.length === 0 ? (
-              <div className="px-4 py-6 text-center text-xs text-muted">—</div>
+              <div className="px-5 py-8 text-center text-[12px] text-muted-2">—</div>
             ) : (
-              <div className="space-y-2 px-4 py-4">
+              <div className="space-y-2.5 px-5 py-5">
                 {sourceEntries.map(([source, count]) => (
                   <div
                     key={source}
-                    className="flex items-center justify-between text-[12px]"
+                    className="flex items-center justify-between text-[12.5px]"
                   >
                     <span className="capitalize text-muted">{source}</span>
                     <span className="mono text-fg">{count}</span>
@@ -344,16 +322,17 @@ export default async function DashboardPage() {
             )}
           </Section>
 
-          <Section title="Quick jump">
-            <div className="space-y-1 px-2 py-2">
-              {jobs.slice(0, 4).map((j) => (
+          {/* Quick jump */}
+          <Section title="Recent jobs">
+            <div className="space-y-0.5 px-2 py-2">
+              {jobs.slice(0, 5).map((j) => (
                 <Link
                   key={j.id}
                   href={`/jobs/${j.id}`}
-                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition hover:bg-panel2/60"
+                  className="group flex items-center gap-2.5 rounded-lg px-3 py-2 transition hover:bg-surface-2/60"
                 >
                   <StatusPill status={j.status} />
-                  <span className="truncate text-[12px] text-muted">
+                  <span className="truncate text-[12.5px] text-muted group-hover:text-fg">
                     {j.company || j.title || "untitled"}
                   </span>
                 </Link>
