@@ -70,13 +70,13 @@ export default async function SettingsPage() {
             <ol className="space-y-2 text-[12px] leading-relaxed text-muted">
               <li>
                 <span className="text-fg">1.</span> Open{" "}
-                <code className="mono text-brand">chrome://extensions</code> and
+                <code className="mono text-accent">chrome://extensions</code> and
                 enable Developer mode.
               </li>
               <li>
                 <span className="text-fg">2.</span> Click{" "}
                 <span className="text-fg">Load unpacked</span> and pick the{" "}
-                <code className="mono text-brand">extension</code> folder in this
+                <code className="mono text-accent">extension</code> folder in this
                 project.
               </li>
               <li>
@@ -85,7 +85,7 @@ export default async function SettingsPage() {
               </li>
               <li>
                 <span className="text-fg">4.</span> On any job post press{" "}
-                <kbd className="rounded border border-line bg-ink2 px-1.5 py-0.5 text-[10px]">
+                <kbd className="rounded border border-line bg-surface-2 px-1.5 py-0.5 text-[10px]">
                   Alt+Shift+J
                 </kbd>{" "}
                 or click the toolbar icon.
