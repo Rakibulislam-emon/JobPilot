@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Capture to JobDesk</title>
+    <style>
+      :root {
+        --ink: #060f14;
+        --ink2: #091820;
+        --panel: #0b1b23;
+        --line: #16323d;
+        --fg: #e6f3f6;
+        --muted: #7e9ba5;
+        --brand: #14b8a6;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; }
+      body {
+        width: 400px;
+        max-height: 600px;
+        overflow-y: auto;
+        background: var(--ink);
+        color: var(--fg);
+        font-family: ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+        font-size: 13px;
+        background-image: radial-gradient(ellipse 90% 40% at 0% -10%, rgba(20,184,166,.16), transparent 60%);
+      }
+      ::-webkit-scrollbar { width: 8px; }
+      ::-webkit-scrollbar-thumb { background: #1b3b47; border-radius: 99px; }
+
+      header {
+        display: flex; align-items: center; gap: 8px;
+        padding: 12px 14px; border-bottom: 1px solid rgba(22,50,61,.8);
+        position: sticky; top: 0; background: rgba(6,15,20,.92);
+        backdrop-filter: blur(8px); z-index: 5;
+      }
+      .logo-dot {
+        width: 10px; height: 10px; border-radius: 999px; background: var(--brand);
+        box-shadow: 0 0 12px 2px rgba(20,184,166,.55);
+      }
+      .brand { font-size: 13px; font-weight: 700; letter-spacing: -.01em; }
+      .brand span { color: var(--brand); }
+      .engine {
+        margin-left: auto; font-size: 9.5px; text-transform: uppercase;
+        letter-spacing: .1em; color: var(--muted); border: 1px solid var(--line);
+        padding: 2px 6px; border-radius: 999px;
+      }
+
+      .pad { padding: 14px; }
+      h2 { font-size: 13px; margin: 0 0 4px; }
+      p.help { font-size: 11.5px; color: var(--muted); line-height: 1.6; margin: 0 0 14px; }
+
+      label {
+        display: block; font-size: 9.5px; font-weight: 700; letter-spacing: .1em;
+        text-transform: uppercase; color: var(--muted); margin: 10px 0 4px;
+      }
+      label .warn { color: #fcd34d; text-transform: none; letter-spacing: 0; font-weight: 500; }
+      input, select, textarea {
+        width: 100%; padding: 7px 9px; border-radius: 7px; font-size: 12.5px;
+        border: 1px solid var(--line); background: var(--ink2); color: var(--fg);
+        outline: none; font-family: inherit;
+      }
+      input:focus, select:focus, textarea:focus {
+        border-color: rgba(20,184,166,.6); box-shadow: 0 0 0 3px rgba(20,184,166,.12);
+      }
+      textarea { resize: vertical; min-height: 54px; }
+      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+      .low { border-color: rgba(252,211,77,.45) !important; background: rgba(252,211,77,.05); }
+
+      .shot {
+        width: 100%; max-height: 130px; object-fit: cover; object-position: top;
+        border-radius: 8px; border: 1px solid var(--line); margin-top: 10px;
+        cursor: zoom-in;
+      }
+
+      button.primary {
+        width: 100%; margin-top: 14px; padding: 10px; border: 0; border-radius: 8px;
+        background: var(--brand); color: #04231f; font-size: 13px; font-weight: 700;
+        cursor: pointer;
+      }
+      button.primary:hover { background: #1fd0bb; }
+      button.primary:disabled { opacity: .55; cursor: not-allowed; }
+      button.ghost {
+        width: 100%; margin-top: 8px; padding: 9px; border-radius: 8px;
+        background: transparent; color: var(--fg); border: 1px solid var(--line);
+        font-size: 12px; font-weight: 600; cursor: pointer;
+      }
+      button.ghost:hover { border-color: #204b5a; }
+
+      .notice {
+        margin-top: 10px; padding: 8px 10px; border-radius: 7px; font-size: 11.5px;
+        line-height: 1.5; border: 1px solid rgba(20,184,166,.22);
+        background: rgba(20,184,166,.07); color: #7fe3d5;
+      }
+      .notice.warn { border-color: rgba(252,211,77,.25); background: rgba(252,211,77,.07); color: #fcd34d; }
+      .notice.err { border-color: rgba(251,113,133,.3); background: rgba(251,113,133,.08); color: #fda4af; }
+
+      .center { padding: 40px 14px; text-align: center; }
+      .spinner {
+        width: 22px; height: 22px; margin: 0 auto 12px; border-radius: 999px;
+        border: 2px solid rgba(20,184,166,.25); border-top-color: var(--brand);
+        animation: spin .7s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .muted { color: var(--muted); font-size: 11.5px; }
+
+      .success {
+        display: grid; place-items: center; padding: 34px 16px; text-align: center;
+      }
+      .tick {
+        width: 40px; height: 40px; border-radius: 999px; display: grid; place-items: center;
+        background: rgba(20,184,166,.12); border: 1px solid rgba(20,184,166,.35);
+        color: var(--brand); font-size: 20px; margin-bottom: 12px;
+      }
+      a.link { color: var(--brand); font-size: 12px; text-decoration: none; }
+      a.link:hover { text-decoration: underline; }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="logo-dot"></div>
+      <div class="brand">Job<span>Desk</span></div>
+      <div class="engine" id="engine">capture</div>
+    </header>
+
+    <!-- loading -->
+    <div id="view-loading" class="center">
+      <div class="spinner"></div>
+      <div class="muted" id="loading-text">Reading this page…</div>
+    </div>
+
+    <!-- setup -->
+    <div id="view-setup" class="pad" hidden>
+      <h2>Connect me first</h2>
+      <p class="help">
+        Paste your JobDesk server URL and extension token in the options page,
+        then come back here.
+      </p>
+      <button type="button" class="primary" id="open-options">Open options</button>
+    </div>
+
+    <!-- form -->
+    <div id="view-form" class="pad" hidden>
+      <h2 id="form-heading">Review &amp; save</h2>
+      <p class="help">AI filled what it could. Check the amber fields before saving.</p>
+
+      <label for="f-title">Role</label>
+      <input id="f-title" placeholder="Job title" />
+
+      <label for="f-company">Company</label>
+      <input id="f-company" placeholder="Company name" />
+
+      <div class="row">
+        <div>
+          <label for="f-location">Location</label>
+          <input id="f-location" placeholder="Dhaka" />
+        </div>
+        <div>
+          <label for="f-salary">Salary</label>
+          <input id="f-salary" placeholder="—" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="f-deadline">Deadline</label>
+          <input id="f-deadline" type="date" />
+        </div>
+        <div>
+          <label for="f-status">Status</label>
+          <select id="f-status"></select>
+        </div>
+      </div>
+
+      <label for="f-source">Source</label>
+      <select id="f-source"></select>
+
+      <img id="shot" class="shot" alt="screenshot" hidden />
+
+      <div id="notice" class="notice" hidden></div>
+
+      <button type="button" class="primary" id="btn-save">Save to JobDesk</button>
+      <button type="button" class="ghost" id="btn-open">Open dashboard</button>
+    </div>
+
+    <!-- success -->
+    <div id="view-done" class="success" hidden>
+      <div class="tick">✓</div>
+      <h2 id="done-title">Saved</h2>
+      <p class="help" id="done-body" style="margin-bottom: 10px"></p>
+      <a class="link" id="done-link" href="#" target="_blank">Open the job →</a>
+      <button type="button" class="ghost" id="btn-again">Capture another</button>
+    </div>
+
+    <div id="view-error" class="pad" hidden>
+      <h2>Something went wrong</h2>
+      <p class="help" id="error-text"></p>
+      <button type="button" class="ghost" id="btn-retry">Try again</button>
+      <button type="button" class="ghost" id="btn-open2">Open dashboard</button>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
