@@ -99,7 +99,7 @@ export default async function JobDetailPage({
           <div className="card p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
-                <h1 className="text-[20px] font-semibold leading-tight tracking-tight">
+                <h1 className="display text-[24px] font-normal tracking-tight text-fg">
                   {job.title || "(untitled role)"}
                 </h1>
                 <p className="mt-1 text-[13px] text-muted">
@@ -110,7 +110,7 @@ export default async function JobDetailPage({
               <StatusPill status={job.status} size="md" />
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-4 border-t border-line/60 pt-4 sm:grid-cols-4">
+            <div className="mt-5 grid grid-cols-2 gap-4 border-t border-line pt-4 sm:grid-cols-4">
               <Meta label="Salary" value={job.salary} />
               <Meta label="Type" value={job.job_type} />
               <Meta label="Source" value={job.source} />
@@ -181,7 +181,7 @@ export default async function JobDetailPage({
               </span>
             }
           >
-            <form action={addNote} className="flex gap-2 border-b border-line/60 p-3">
+            <form action={addNote} className="flex gap-2 border-b border-line p-3">
               <input type="hidden" name="job_id" value={job.id} />
               <input
                 name="note"
@@ -200,10 +200,10 @@ export default async function JobDetailPage({
                 const to = (a.to_status as Status) ?? null;
                 return (
                   <li key={a.id} className="flex gap-3 px-4 py-3">
-                    <div className="mt-1 grid h-6 w-6 shrink-0 place-items-center rounded-full border border-line bg-ink2">
+                    <div className="mt-1 grid h-6 w-6 shrink-0 place-items-center rounded-full border border-line bg-surface-2">
                       <span
                         className={`h-1.5 w-1.5 rounded-full ${
-                          to ? STATUS_META[to]?.dot ?? "bg-muted" : "bg-brand"
+                          to ? STATUS_META[to]?.dot ?? "bg-muted" : "bg-accent"
                         }`}
                       />
                     </div>
@@ -265,7 +265,7 @@ export default async function JobDetailPage({
                     {c.email && (
                       <a
                         href={`mailto:${c.email}`}
-                        className="block truncate text-[11px] text-brand hover:underline"
+                        className="block truncate text-[11px] text-accent hover:underline"
                       >
                         {c.email}
                       </a>
@@ -294,8 +294,8 @@ export default async function JobDetailPage({
               )}
             </ul>
 
-            <details className="border-t border-line/60">
-              <summary className="cursor-pointer px-4 py-2.5 text-[11.5px] text-brand">
+            <details className="border-t border-line">
+              <summary className="cursor-pointer px-4 py-2.5 text-[11.5px] text-accent">
                 + Add contact
               </summary>
               <form action={addContact} className="space-y-2 px-4 pb-4">

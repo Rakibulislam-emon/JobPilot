@@ -154,7 +154,7 @@ export default async function JobsPage({
       ) : (
         <div className="card overflow-hidden">
           {/* header row — desktop only */}
-          <div className="hidden grid-cols-[1fr_120px_100px_110px_90px] gap-3 border-b border-line/70 px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted md:grid">
+          <div className="hidden grid-cols-[1fr_120px_100px_110px_90px] gap-3 border-b border-line px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted md:grid">
             <span>Role / company</span>
             <span>Status</span>
             <span>Source</span>
@@ -167,7 +167,7 @@ export default async function JobsPage({
               <li key={job.id}>
                 <Link
                   href={`/jobs/${job.id}`}
-                  className="grid grid-cols-1 gap-2 px-4 py-3 transition hover:bg-panel2/50 md:grid-cols-[1fr_120px_100px_110px_90px] md:items-center md:gap-3"
+                  className="group grid grid-cols-1 gap-2 px-4 py-3.5 transition hover:bg-surface-2/40 md:grid-cols-[1fr_120px_100px_110px_90px] md:items-center md:gap-3"
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -175,7 +175,7 @@ export default async function JobsPage({
                         {job.title || "(untitled role)"}
                       </span>
                       {job.priority <= 2 && (
-                        <span className="pill border-brand/30 bg-brand/10 px-1.5 py-0 text-[9.5px] text-brand">
+                        <span className="pill border-accent/30 bg-accent-soft px-1.5 py-0 text-[9.5px] text-accent">
                           {job.priority === 1 ? "dream" : "high"}
                         </span>
                       )}

@@ -9,12 +9,12 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm animate-in">
         <div className="mb-8 flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-brand/15 ring-1 ring-brand/30">
-            <span className="h-3 w-3 rounded-full bg-brand shadow-[0_0_16px_3px_rgba(20,184,166,.55)]" />
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-accent-soft ring-1 ring-accent/30">
+            <span className="h-3 w-3 rounded-full bg-accent shadow-[0_0_16px_3px_rgba(20,184,166,.55)]" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold tracking-tight">
-              Job<span className="text-brand">Desk</span>
+            <h1 className="display text-[22px] font-normal tracking-tight">
+              Job<span className="text-accent">Desk</span>
             </h1>
             <p className="text-[11px] uppercase tracking-[0.18em] text-muted">
               job application tracker
@@ -32,8 +32,8 @@ export default function LoginPage() {
               Supabase is not configured yet
             </h2>
             <p className="mb-4 text-xs leading-relaxed text-muted">
-              Copy <code className="mono text-brand">.env.example</code> to{" "}
-              <code className="mono text-brand">.env.local</code> and fill in your
+              Copy <code className="mono text-accent">.env.example</code> to{" "}
+              <code className="mono text-accent">.env.local</code> and fill in your
               project URL and anon key. Then restart the dev server.
             </p>
             <ol className="space-y-2 text-xs text-muted">
@@ -43,14 +43,14 @@ export default function LoginPage() {
                   href="https://supabase.com/dashboard"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-brand underline decoration-brand/40"
+                  className="text-accent underline decoration-brand/40"
                 >
                   supabase.com/dashboard
                 </a>
               </li>
               <li>
                 2. SQL Editor → paste{" "}
-                <code className="mono text-brand">supabase/schema.sql</code> → Run
+                <code className="mono text-accent">supabase/schema.sql</code> → Run
               </li>
               <li>3. Settings → API → copy URL + anon key</li>
               <li>4. Authentication → Users → add your email &amp; password</li>

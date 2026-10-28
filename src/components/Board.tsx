@@ -44,20 +44,20 @@ export function Board({ jobs }: { jobs: Job[] }) {
               const jobId = e.dataTransfer.getData("text/plain");
               if (jobId) drop(status, jobId);
             }}
-            className={`flex w-[268px] shrink-0 flex-col rounded-xl border transition ${
+            className={`flex w-[280px] shrink-0 flex-col rounded-xl border transition-all duration-200 ${
               isHover
-                ? "border-brand/50 bg-brand/[0.06]"
-                : "border-line/80 bg-panel/40"
+                ? "border-accent/50 bg-accent-soft shadow-glow"
+                : "border-line bg-surface/60"
             }`}
           >
-            <div className="flex items-center justify-between border-b border-line/60 px-3 py-2.5">
+            <div className="flex items-center justify-between border-b border-line px-3.5 py-3">
               <div className="flex items-center gap-2">
-                <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
-                <span className="text-[11.5px] font-semibold uppercase tracking-[0.1em] text-muted">
+                <span className={`h-2 w-2 rounded-full ${meta.dot} shadow-[0_0_8px_2px_currentColor]`} />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
                   {meta.short}
                 </span>
               </div>
-              <span className="mono rounded bg-ink2 px-1.5 py-0.5 text-[10.5px] text-muted">
+              <span className="mono rounded-md bg-surface-3 px-2 py-0.5 text-[10.5px] text-muted">
                 {items.length}
               </span>
             </div>
@@ -82,8 +82,8 @@ export function Board({ jobs }: { jobs: Job[] }) {
                       setDragging(null);
                       setHover(null);
                     }}
-                    className={`group cursor-grab rounded-lg border border-line bg-ink2/80 p-2.5 transition active:cursor-grabbing ${
-                      dragging === job.id ? "opacity-40" : "hover:border-line2"
+                    className={`group cursor-grab rounded-xl border border-line bg-surface-2/60 p-3 transition active:cursor-grabbing ${
+                      dragging === job.id ? "opacity-40" : "hover:border-line-2 hover:bg-surface-3/60"
                     }`}
                   >
                     <Link
@@ -100,7 +100,7 @@ export function Board({ jobs }: { jobs: Job[] }) {
 
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
                         {job.priority <= 2 && (
-                          <span className="pill border-brand/25 bg-brand/10 px-1.5 py-0 text-[9px] text-brand">
+                          <span className="pill border-accent/25 bg-accent-soft px-1.5 py-0 text-[9px] text-accent">
                             {job.priority === 1 ? "dream" : "high"}
                           </span>
                         )}
@@ -129,7 +129,7 @@ export function Board({ jobs }: { jobs: Job[] }) {
               })}
 
               {items.length === 0 && (
-                <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-line/70 py-6 text-[11px] text-muted/50">
+                <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-line py-8 text-[11px] text-muted-2">
                   drop here
                 </div>
               )}
