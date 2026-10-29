@@ -15,7 +15,7 @@
 | Dev server | `http://localhost:3000` (user manually chalu kore) |
 | AI status | **offline** — kono provider key set nei |
 | Deploy | ❌ hoy nai (localhost only) |
-| Push | ❌ `redesign/modern-ui` ekhono origin e push kora hoy nai |
+| Push | ✅ `origin/redesign/modern-ui` e push kora (PR: https://github.com/Rakibulislam-emon/JobPilot/pull/new/redesign/modern-ui) |
 
 **Next immediate step:** user UI review → OpenRouter/Groq key add → push + merge → Vercel deploy.
 
@@ -179,7 +179,7 @@ scripts/check.mjs               npm run check (provider pings)
 - [ ] **AI key add** (OpenRouter ba Groq) → vision/text parse on
 - [ ] **Vercel deploy** — GitHub push → Vercel import → env vars → deploy
 - [ ] **Extension `NEXT_PUBLIC_APP_URL`** deployed URL e update + reload
-- [ ] **Push branch** `git push -u origin redesign/modern-ui`
+- [ ] **Push branch** `git push -u origin redesign/modern-ui` — ✅ done (`6ada9af`)
 - [ ] **Merge** `redesign/modern-ui` → `main`
 
 ### 🟡 UI
