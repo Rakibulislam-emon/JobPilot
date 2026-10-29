@@ -10,7 +10,7 @@
 | Item | Value |
 |---|---|
 | Branch | `redesign/modern-ui` (main er upor 5 commit) |
-| Last commit | `7c8ac81` feat(ui): shadcn setup + vercel-style dark palette |
+| Last commit | `01c1eda` style(ui): vercel-style black theme pass |
 | Working tree | clean |
 | Dev server | `http://localhost:3000` (user manually chalu kore) |
 | AI status | **offline** — kono provider key set nei |
@@ -37,7 +37,8 @@ Personal **job application tracker** + browser extension.
 ## 2. Git history
 
 ```
-7c8ac81  feat(ui): shadcn setup + vercel-style dark palette      ← HEAD (redesign/modern-ui)
+01c1eda  style(ui): vercel-style black theme pass                 ← HEAD (redesign/modern-ui)
+7c8ac81  feat(ui): shadcn setup + vercel-style dark palette
 26e20d1  redesign: phase 8 polish - migrate settings tokens
 b86cfe3  redesign: phase 4-7 jobs list, board, detail, login, popup
 04f7f42  redesign: phase 1-3 design tokens, shell, dashboard
@@ -75,9 +76,9 @@ Remote: `https://github.com/Rakibulislam-emon/JobPilot.git`
 - [x] Dark theme popup matching app
 
 ### UI redesign (branch `redesign/modern-ui`)
-- [x] Design tokens rewritten (dark, neutral near-black `#09090b`, teal accent `#14b8a6`)
+- [x] Design tokens rewritten — **Vercel-style pure black** `#000` bg, neutral surfaces, teal accent used only as a dot/highlight
 - [x] Typography: Geist Sans + Geist Mono (Fraunces serif **dropped** for Vercel-like look), Hind Siliguri for Bangla
-- [x] Shell: sidebar with active accent bar, PageHeader, EmptyState, Section, StatCard
+- [x] Shell: sidebar (monochrome active state), PageHeader with hairline rule, EmptyState, Section, StatCard
 - [x] shadcn/ui installed (`components.json`, `src/lib/utils.ts`, `src/components/ui/*`)
 - [x] shadcn components re-themed to our tokens (no shadcn light-theme leakage)
 - [x] Login page + form → shadcn `Card`/`Input`/`Label`/`Button`
@@ -244,7 +245,20 @@ git push -u origin redesign/modern-ui
 
 ## 9. Session log
 
-### 2026-10-29
+### 2026-10-29 (session 2) — Vercel-style black theme pass
+- palette -> pure black `#000`, neutral surfaces (`#0a0a0a`/`#111`/`#171717`), hairline borders, shadows removed
+- primary button is now white/inverted (`.btn-primary` + shadcn `Button`)
+- `.bg-grid` masked grid + top glow overlay in `layout.tsx`
+- **bug fix:** sidebar double-active on `/jobs/new` (both Jobs + Add job lit)
+- sidebar active state monochrome (`bg-surface-2`), brand dot smaller
+- status pills monochrome (colored dot only) — `STATUS_META.pill`
+- board columns neutralised, cards `rounded-lg`, deadline tones -> tokens
+- `PageHeader` border-b + tighter type scale, `StatCard` mono numbers
+- login page recentred, 360px card, no serif wordmark
+- legacy colors (emerald/amber/sky/rose) mapped to `success/warn/info/danger`
+- tsc + build pass, commit `01c1eda`
+
+### 2026-10-29 (session 1)
 - shadcn init + 5 components install
 - `globals.css` puro rewrite: dark neutral palette, Geist typography, shadcn light leak fix
 - shadcn ui components amader tokens e customize
