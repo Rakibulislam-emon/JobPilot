@@ -1,5 +1,7 @@
 # JobDesk
 
+> **Resuming a session?** Read [`PROGRESS.md`](PROGRESS.md) first — it has the current branch, done/remaining work, env status, and known issues.
+
 A personal **job application tracker** with a browser extension that captures any job post —
 BDJobs, LinkedIn, a Facebook group screenshot — and files it for you.
 
