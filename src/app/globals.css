@@ -4,15 +4,15 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* ── Design tokens ─────────────────────────────────────────── */
+/* ── Design tokens — Vercel-style black ───────────────────── */
 @theme {
-  /* Surfaces — neutral near-black, Vercel-ish */
-  --color-bg: #09090b;
-  --color-bg-2: #0c0c0f;
-  --color-surface: #101013;
-  --color-surface-2: #16161a;
-  --color-surface-3: #1d1d22;
-  --color-surface-hover: #232329;
+  /* Surfaces */
+  --color-bg: #000000;
+  --color-bg-2: #050505;
+  --color-surface: #0a0a0a;
+  --color-surface-2: #111111;
+  --color-surface-3: #171717;
+  --color-surface-hover: #1f1f1f;
 
   /* Legacy aliases (backward compat) */
   --color-ink: var(--color-bg);
@@ -21,15 +21,19 @@
   --color-panel2: var(--color-surface-2);
 
   /* Lines */
-  --color-line: #232329;
-  --color-line-2: #2e2e36;
-  --color-line-3: #3f3f4a;
+  --color-line: #1f1f1f;
+  --color-line-2: #2a2a2a;
+  --color-line-3: #3a3a3a;
 
   /* Text */
-  --color-fg: #fafafa;
-  --color-fg-2: #c7c7cf;
-  --color-muted: #8b8b96;
-  --color-muted-2: #5c5c66;
+  --color-fg: #ededed;
+  --color-fg-2: #b4b4b4;
+  --color-muted: #8f8f8f;
+  --color-muted-2: #5c5c5c;
+
+  /* Inverted (white primary button) */
+  --color-invert: #ededed;
+  --color-invert-fg: #000000;
 
   /* Accent — teal, used sparingly */
   --color-accent: #14b8a6;
@@ -51,7 +55,7 @@
   --color-info: #60a5fa;
   --color-info-soft: rgba(96, 165, 250, 0.10);
 
-  /* Typography — Geist everywhere, Vercel style */
+  /* Typography — Geist, Vercel style */
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-display: var(--font-geist-sans), ui-sans-serif, system-ui,
@@ -60,12 +64,12 @@
     "SFMono-Regular", Consolas, monospace;
   --font-bangla: var(--font-hind-siliguri), "Hind Siliguri", "Noto Sans Bengali", sans-serif;
 
-  /* Shadows */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.55);
-  --shadow-glow: 0 0 24px rgba(20, 184, 166, 0.12);
+  /* Shadows — Vercel uses borders, not shadows */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.6);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.7);
+  --shadow-glow: 0 0 24px rgba(255, 255, 255, 0.06);
 }
 
 /* ── Base ──────────────────────────────────────────────────── */
@@ -81,30 +85,27 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-image:
-      radial-gradient(ellipse 120% 80% at 50% -20%, rgba(20, 184, 166, 0.05), transparent 50%);
-    background-attachment: fixed;
   }
 
   ::selection {
-    background: rgba(20, 184, 166, 0.25);
+    background: rgba(255, 255, 255, 0.16);
     color: var(--color-fg);
   }
 
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: var(--color-line-2);
+    background: #262626;
     border-radius: 9999px;
-    border: 2px solid var(--color-bg);
+    border: 3px solid #000;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-line-3);
+    background: #3a3a3a;
   }
 
   input, textarea, select {
@@ -121,45 +122,56 @@
   }
 }
 
+/* ── Vercel-style background grid ─────────────────────────── */
+.bg-grid {
+  background-image:
+    radial-gradient(ellipse 70% 45% at 50% -10%, rgba(255, 255, 255, 0.05), transparent 70%),
+    linear-gradient(to right, rgba(255, 255, 255, 0.032) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.032) 1px, transparent 1px);
+  background-size: 100% 100%, 64px 64px, 64px 64px;
+  background-position: 0 0, center top, center top;
+  -webkit-mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 25%, transparent 80%);
+  mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 25%, transparent 80%);
+}
+
 /* ── Components ────────────────────────────────────────────── */
 @layer components {
   .card {
-    border-radius: 0.875rem;
+    border-radius: 0.75rem;
     border: 1px solid var(--color-line);
     background: var(--color-surface);
-    box-shadow: var(--shadow-xs);
-    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+    transition: border-color 0.15s, background 0.15s;
   }
   .card-hover:hover {
     border-color: var(--color-line-2);
-    box-shadow: var(--shadow-sm);
+    background: var(--color-surface-2);
   }
 
   .card-glass {
-    border-radius: 0.875rem;
-    border: 1px solid color-mix(in srgb, var(--color-line) 60%, transparent);
-    background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(10, 10, 10, 0.7);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
 
   .label {
     display: block;
-    margin-bottom: 0.375rem;
-    font-size: 10.5px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
     color: var(--color-muted);
   }
 
   .input {
     width: 100%;
-    border-radius: 0.625rem;
+    height: 2.25rem;
+    border-radius: 0.5rem;
     border: 1px solid var(--color-line-2);
-    background: var(--color-surface-2);
-    padding: 0.55rem 0.75rem;
-    font-size: 0.875rem;
+    background: var(--color-bg);
+    padding: 0 0.75rem;
+    font-size: 0.8125rem;
     color: var(--color-fg);
     outline: none;
     transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
@@ -168,20 +180,26 @@
     color: var(--color-muted-2);
   }
   .input:focus {
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px var(--color-accent-soft);
-    background: var(--color-surface-3);
+    border-color: #525252;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
+    background: var(--color-surface);
   }
   .input:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
+  textarea.input {
+    height: auto;
+    padding: 0.5rem 0.75rem;
+    line-height: 1.5;
+  }
+
   select.input {
     appearance: none;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238b8b96' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238f8f8f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
     background-repeat: no-repeat;
-    background-position: right 0.7rem center;
+    background-position: right 0.65rem center;
     padding-right: 2rem;
   }
 
@@ -189,41 +207,39 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.45rem;
-    border-radius: 0.625rem;
-    padding: 0.55rem 1rem;
+    gap: 0.4rem;
+    height: 2.25rem;
+    border-radius: 0.5rem;
+    padding: 0 0.875rem;
     font-size: 0.8125rem;
-    font-weight: 600;
+    font-weight: 500;
     white-space: nowrap;
     transition: background 0.15s, border-color 0.15s, color 0.15s,
-      opacity 0.15s, transform 0.1s, box-shadow 0.15s;
+      opacity 0.15s;
     cursor: pointer;
   }
-  .btn:active:not(:disabled) {
-    transform: scale(0.98);
-  }
   .btn:disabled {
-    opacity: 0.45;
+    opacity: 0.4;
     cursor: not-allowed;
   }
 
+  /* Vercel primary: white on black */
   .btn-primary {
-    background: var(--color-accent);
-    color: #04231f;
-    box-shadow: var(--shadow-glow);
+    background: var(--color-invert);
+    color: var(--color-invert-fg);
+    font-weight: 500;
   }
   .btn-primary:hover:not(:disabled) {
-    background: #1fd0bb;
-    box-shadow: 0 0 32px rgba(20, 184, 166, 0.22);
+    background: #d4d4d4;
   }
 
   .btn-ghost {
-    border: 1px solid var(--color-line);
+    border: 1px solid var(--color-line-2);
     color: var(--color-fg);
     background: transparent;
   }
   .btn-ghost:hover:not(:disabled) {
-    border-color: var(--color-line-2);
+    border-color: var(--color-line-3);
     background: var(--color-surface-2);
   }
 
@@ -233,14 +249,14 @@
     background: var(--color-danger-soft);
   }
   .btn-danger:hover:not(:disabled) {
-    background: rgba(248, 113, 113, 0.18);
+    background: rgba(248, 113, 113, 0.16);
     border-color: rgba(248, 113, 113, 0.4);
   }
 
   .btn-subtle {
     color: var(--color-muted);
     background: transparent;
-    padding: 0.4rem 0.7rem;
+    padding: 0 0.6rem;
   }
   .btn-subtle:hover:not(:disabled) {
     color: var(--color-fg);
@@ -253,9 +269,9 @@
     gap: 0.35rem;
     border-radius: 9999px;
     border: 1px solid;
-    padding: 0.15rem 0.6rem;
+    padding: 0.1rem 0.55rem;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 500;
     line-height: 1.5;
     width: fit-content;
   }
@@ -265,12 +281,12 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Vercel-style display heading: sans, tight, semibold */
+  /* Vercel-style display heading */
   .display {
     font-family: var(--font-display);
     font-weight: 600;
-    letter-spacing: -0.03em;
-    line-height: 1.1;
+    letter-spacing: -0.04em;
+    line-height: 1.05;
   }
 
   .no-scrollbar {
@@ -285,7 +301,7 @@
 @keyframes fadeUp {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -304,25 +320,25 @@
 }
 
 .animate-in {
-  animation: fadeUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: fadeUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-fade {
-  animation: fadeIn 0.3s ease both;
+  animation: fadeIn 0.25s ease both;
 }
 
 .stagger > * {
-  animation: fadeUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: fadeUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .stagger > *:nth-child(1) { animation-delay: 0.02s; }
-.stagger > *:nth-child(2) { animation-delay: 0.06s; }
-.stagger > *:nth-child(3) { animation-delay: 0.10s; }
-.stagger > *:nth-child(4) { animation-delay: 0.14s; }
-.stagger > *:nth-child(5) { animation-delay: 0.18s; }
-.stagger > *:nth-child(6) { animation-delay: 0.22s; }
+.stagger > *:nth-child(2) { animation-delay: 0.05s; }
+.stagger > *:nth-child(3) { animation-delay: 0.08s; }
+.stagger > *:nth-child(4) { animation-delay: 0.11s; }
+.stagger > *:nth-child(5) { animation-delay: 0.14s; }
+.stagger > *:nth-child(6) { animation-delay: 0.17s; }
 
 .skeleton {
-  background: linear-gradient(90deg, var(--color-surface-2) 25%, var(--color-surface-3) 50%, var(--color-surface-2) 75%);
+  background: linear-gradient(90deg, #111 25%, #171717 50%, #111 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 0.5rem;
@@ -331,7 +347,7 @@
 /* ── Focus ring ────────────────────────────────────────────── */
 @layer base {
   :focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid rgba(255, 255, 255, 0.4);
     outline-offset: 2px;
     border-radius: 0.375rem;
   }

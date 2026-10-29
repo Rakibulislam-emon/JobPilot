@@ -25,7 +25,7 @@ export function Board({ jobs }: { jobs: Job[] }) {
   }
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-4">
+    <div className="no-scrollbar flex gap-3 overflow-x-auto pb-4">
       {BOARD_COLUMNS.map((status) => {
         const items = jobs.filter((j) => statusOf(j) === status);
         const meta = STATUS_META[status];
@@ -44,29 +44,26 @@ export function Board({ jobs }: { jobs: Job[] }) {
               const jobId = e.dataTransfer.getData("text/plain");
               if (jobId) drop(status, jobId);
             }}
-            className={`flex w-[280px] shrink-0 flex-col rounded-xl border transition-all duration-200 ${
+            className={`flex w-[272px] shrink-0 flex-col rounded-xl border transition-colors ${
               isHover
-                ? "border-accent/50 bg-accent-soft shadow-glow"
-                : "border-line bg-surface/60"
+                ? "border-line-3 bg-surface-2/60"
+                : "border-line bg-surface/40"
             }`}
           >
-            <div className="flex items-center justify-between border-b border-line px-3.5 py-3">
+            <div className="flex items-center justify-between gap-2 border-b border-line px-3 py-2.5">
               <div className="flex items-center gap-2">
-                <span className={`h-2 w-2 rounded-full ${meta.dot} shadow-[0_0_8px_2px_currentColor]`} />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
+                <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+                <span className="text-[12px] font-medium text-fg-2">
                   {meta.short}
                 </span>
               </div>
-              <span className="mono rounded-md bg-surface-3 px-2 py-0.5 text-[10.5px] text-muted">
-                {items.length}
-              </span>
+              <span className="mono text-[11px] text-muted-2">{items.length}</span>
             </div>
 
             <div className="flex min-h-[120px] flex-1 flex-col gap-2 p-2">
               {items.map((job) => {
                 const d = daysUntil(job.deadline);
-                const urgent =
-                  job.deadline && d !== null && d >= 0 && d <= 3;
+                const urgent = job.deadline && d !== null && d >= 0 && d <= 3;
                 const overdue = job.deadline && d !== null && d < 0;
 
                 return (
@@ -82,25 +79,23 @@ export function Board({ jobs }: { jobs: Job[] }) {
                       setDragging(null);
                       setHover(null);
                     }}
-                    className={`group cursor-grab rounded-xl border border-line bg-surface-2/60 p-3 transition active:cursor-grabbing ${
-                      dragging === job.id ? "opacity-40" : "hover:border-line-2 hover:bg-surface-3/60"
+                    className={`group cursor-grab rounded-lg border border-line bg-surface-2 p-2.5 transition-colors active:cursor-grabbing ${
+                      dragging === job.id
+                        ? "opacity-40"
+                        : "hover:border-line-2 hover:bg-surface-3"
                     }`}
                   >
-                    <Link
-                      href={`/jobs/${job.id}`}
-                      draggable={false}
-                      className="block"
-                    >
-                      <div className="line-clamp-2 text-[12.5px] font-medium leading-snug">
+                    <Link href={`/jobs/${job.id}`} draggable={false} className="block">
+                      <div className="line-clamp-2 text-[12.5px] font-medium leading-snug text-fg">
                         {job.title || "(untitled role)"}
                       </div>
                       <div className="mt-0.5 truncate text-[11px] text-muted">
                         {job.company || "Unknown"}
                       </div>
 
-                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
                         {job.priority <= 2 && (
-                          <span className="pill border-accent/25 bg-accent-soft px-1.5 py-0 text-[9px] text-accent">
+                          <span className="pill border-line-2 bg-transparent px-1.5 py-0 text-[9.5px] text-fg-2">
                             {job.priority === 1 ? "dream" : "high"}
                           </span>
                         )}
@@ -108,17 +103,17 @@ export function Board({ jobs }: { jobs: Job[] }) {
                           <span
                             className={`mono text-[9.5px] ${
                               overdue
-                                ? "text-rose-300"
+                                ? "text-danger"
                                 : urgent
-                                  ? "text-amber-300"
-                                  : "text-muted/70"
+                                  ? "text-warn"
+                                  : "text-muted-2"
                             }`}
                           >
                             {formatDate(job.deadline)}
                           </span>
                         )}
                         {job.source && (
-                          <span className="text-[9.5px] capitalize text-muted/60">
+                          <span className="text-[9.5px] capitalize text-muted-2">
                             {job.source}
                           </span>
                         )}

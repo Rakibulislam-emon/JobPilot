@@ -155,7 +155,7 @@ export function JobForm({ job }: { job?: Job }) {
       <label htmlFor={htmlFor} className="label">
         {children}
         {field && lowConf(field) && (
-          <span className="ml-1.5 font-normal normal-case tracking-normal text-amber-300/90">
+          <span className="ml-1.5 font-normal normal-case tracking-normal text-warn">
             · check
           </span>
         )}
@@ -177,10 +177,10 @@ export function JobForm({ job }: { job?: Job }) {
         )}
 
         {/* ── Screenshot scanner ───────────────────────────── */}
-        <div className="card p-3.5">
+        <div className="card p-4">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-accent-soft ring-1 ring-accent/25">
-              <Icon name="sparkles" size={16} className="text-accent" />
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-line-2 bg-surface-2">
+              <Icon name="sparkles" size={16} className="text-muted" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-[13px] font-medium">Fill from a screenshot</div>
@@ -212,7 +212,7 @@ export function JobForm({ job }: { job?: Job }) {
 
           {scan.busy && typeof scan.progress === "number" && (
             <div className="mt-3">
-              <div className="h-1.5 overflow-hidden rounded-full bg-surface-3">
+              <div className="h-1 overflow-hidden rounded-full bg-surface-3">
                 <div
                   className="h-full rounded-full bg-accent transition-all"
                   style={{ width: `${Math.max(5, scan.progress)}%` }}
@@ -225,13 +225,13 @@ export function JobForm({ job }: { job?: Job }) {
           )}
 
           {scan.message && (
-            <p className="mt-2.5 flex items-start gap-1.5 rounded-lg border border-accent/20 bg-accent-soft px-2.5 py-2 text-[11.5px] text-accent/90">
+            <p className="mt-2.5 flex items-start gap-1.5 rounded-md border border-success/25 bg-success-soft px-2.5 py-2 text-[11.5px] text-success">
               <Icon name="check" size={13} className="mt-0.5 shrink-0" />
               {scan.message}
             </p>
           )}
           {scan.error && (
-            <p className="mt-2.5 rounded-lg border border-danger/25 bg-danger-soft px-2.5 py-2 text-[11.5px] text-danger">
+            <p className="mt-2.5 rounded-md border border-danger/25 bg-danger-soft px-2.5 py-2 text-[11.5px] text-danger">
               {scan.error}
             </p>
           )}
@@ -422,7 +422,7 @@ export function JobForm({ job }: { job?: Job }) {
         </div>
 
         {state?.error && (
-          <p className="rounded-lg border border-danger/25 bg-danger-soft px-3 py-2 text-xs text-danger">
+          <p className="rounded-md border border-danger/25 bg-danger-soft px-3 py-2 text-xs text-danger">
             {state.error}
           </p>
         )}

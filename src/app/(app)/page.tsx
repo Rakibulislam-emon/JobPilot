@@ -133,7 +133,7 @@ export default async function DashboardPage() {
             { t: "3 · Track", d: "Move it through the board as you progress." },
           ].map((s) => (
             <div key={s.t} className="card px-5 py-4">
-              <div className="font-mono text-[11px] font-semibold uppercase tracking-wider text-accent">
+              <div className="mono text-[11px] text-muted-2">
                 {s.t}
               </div>
               <div className="mt-1.5 text-[13px] leading-relaxed text-muted">{s.d}</div>
@@ -172,7 +172,7 @@ export default async function DashboardPage() {
             }
           >
             {attention.length === 0 ? (
-              <div className="px-5 py-10 text-center text-[13px] text-muted">
+              <div className="px-4 py-10 text-center text-[12.5px] text-muted">
                 Nothing urgent. Nice work.
               </div>
             ) : (
@@ -181,10 +181,10 @@ export default async function DashboardPage() {
                   <li key={a.job.id}>
                     <Link
                       href={`/jobs/${a.job.id}`}
-                      className="group flex items-center gap-3 px-5 py-3.5 transition hover:bg-surface-2/50"
+                      className="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-2/60"
                     >
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-[13.5px] font-medium text-fg">
+                        <div className="truncate text-[13px] font-medium text-fg">
                           {a.job.title || "(untitled role)"}
                         </div>
                         <div className="truncate text-[12px] text-muted">
@@ -211,7 +211,7 @@ export default async function DashboardPage() {
           {/* Recent activity */}
           <Section title="Recent activity">
             {activities.length === 0 ? (
-              <div className="px-5 py-10 text-center text-[13px] text-muted">
+              <div className="px-4 py-10 text-center text-[12.5px] text-muted">
                 No activity yet.
               </div>
             ) : (
@@ -219,7 +219,7 @@ export default async function DashboardPage() {
                 {activities.map((a) => {
                   const job = jobs.find((j) => j.id === a.job_id);
                   return (
-                    <li key={a.id} className="flex items-start gap-3 px-5 py-3">
+                    <li key={a.id} className="flex items-start gap-3 px-4 py-3">
                       <div className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md bg-surface-2 text-muted">
                         <Icon
                           name={a.kind === "status" ? "columns" : a.kind === "note" ? "note" : "plus"}
@@ -235,7 +235,7 @@ export default async function DashboardPage() {
                                 {truncate(job?.company || job?.title || "job", 40)}
                               </span>{" "}
                               to{" "}
-                              <span className="font-medium text-accent">
+                              <span className="font-medium text-fg">
                                 {STATUS_META[(a.to_status as Status) ?? "saved"]?.label}
                               </span>
                             </>
@@ -263,7 +263,7 @@ export default async function DashboardPage() {
                       {job && (
                         <Link
                           href={`/jobs/${job.id}`}
-                          className="shrink-0 text-muted-2 transition hover:text-accent"
+                          className="shrink-0 text-muted-2 transition hover:text-fg"
                           aria-label="Open job"
                         >
                           <Icon name="external" size={13} />
@@ -280,14 +280,14 @@ export default async function DashboardPage() {
         <div className="space-y-4">
           {/* Pipeline */}
           <Section title="Pipeline">
-            <div className="space-y-3 px-5 py-5">
+            <div className="space-y-3 px-4 py-4">
               {STATUS_ORDER.filter((s) => (byStatus[s] ?? 0) > 0).map((s) => (
                 <div key={s}>
                   <div className="mb-1.5 flex items-center justify-between text-[12px]">
                     <span className="text-muted">{STATUS_META[s].label}</span>
                     <span className="mono text-fg">{byStatus[s]}</span>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-surface-3">
+                  <div className="h-1 overflow-hidden rounded-full bg-surface-3">
                     <div
                       className={`h-full rounded-full ${STATUS_META[s].bar}`}
                       style={{
@@ -308,7 +308,7 @@ export default async function DashboardPage() {
             {sourceEntries.length === 0 ? (
               <div className="px-5 py-8 text-center text-[12px] text-muted-2">—</div>
             ) : (
-              <div className="space-y-2.5 px-5 py-5">
+              <div className="space-y-2.5 px-4 py-4">
                 {sourceEntries.map(([source, count]) => (
                   <div
                     key={source}
@@ -324,12 +324,12 @@ export default async function DashboardPage() {
 
           {/* Quick jump */}
           <Section title="Recent jobs">
-            <div className="space-y-0.5 px-2 py-2">
+            <div className="space-y-0.5 p-1.5">
               {jobs.slice(0, 5).map((j) => (
                 <Link
                   key={j.id}
                   href={`/jobs/${j.id}`}
-                  className="group flex items-center gap-2.5 rounded-lg px-3 py-2 transition hover:bg-surface-2/60"
+                  className="group flex items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors hover:bg-surface-2/60"
                 >
                   <StatusPill status={j.status} />
                   <span className="truncate text-[12.5px] text-muted group-hover:text-fg">

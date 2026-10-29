@@ -17,11 +17,11 @@ export const dynamic = "force-dynamic";
 function Meta({ label, value }: { label: string; value?: React.ReactNode }) {
   return (
     <div>
-      <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">
+      <div className="text-[11.5px] text-muted">
         {label}
       </div>
-      <div className="mt-0.5 text-[13px]">
-        {value || <span className="text-muted/60">—</span>}
+      <div className="mt-0.5 text-[13px] text-fg">
+        {value || <span className="text-muted-2">—</span>}
       </div>
     </div>
   );
@@ -122,9 +122,9 @@ export default async function JobDetailPage({
                     <span
                       className={
                         !closed && dleft !== null && dleft < 0
-                          ? "text-rose-300"
+                          ? "text-danger"
                           : !closed && dleft !== null && dleft <= 3
-                            ? "text-amber-300"
+                            ? "text-warn"
                             : ""
                       }
                     >
@@ -195,7 +195,7 @@ export default async function JobDetailPage({
               </button>
             </form>
 
-            <ul className="divide-y divide-line/60">
+            <ul className="divide-y divide-line">
               {activities.map((a) => {
                 const to = (a.to_status as Status) ?? null;
                 return (
@@ -252,7 +252,7 @@ export default async function JobDetailPage({
           </Section>
 
           <Section title="Contacts">
-            <ul className="divide-y divide-line/60">
+            <ul className="divide-y divide-line">
               {contacts.map((c) => (
                 <li key={c.id} className="flex items-start gap-2 px-4 py-2.5">
                   <div className="min-w-0 flex-1">
@@ -265,7 +265,7 @@ export default async function JobDetailPage({
                     {c.email && (
                       <a
                         href={`mailto:${c.email}`}
-                        className="block truncate text-[11px] text-accent hover:underline"
+                        className="block truncate text-[11px] text-fg-2 hover:text-fg hover:underline"
                       >
                         {c.email}
                       </a>
@@ -279,7 +279,7 @@ export default async function JobDetailPage({
                     <input type="hidden" name="job_id" value={job.id} />
                     <button
                       type="submit"
-                      className="text-muted/60 transition hover:text-rose-300"
+                      className="text-muted-2 transition-colors hover:text-danger"
                       aria-label="Remove contact"
                     >
                       <Icon name="trash" size={12} />
@@ -295,7 +295,7 @@ export default async function JobDetailPage({
             </ul>
 
             <details className="border-t border-line">
-              <summary className="cursor-pointer px-4 py-2.5 text-[11.5px] text-accent">
+              <summary className="cursor-pointer px-4 py-2.5 text-[11.5px] text-muted hover:text-fg">
                 + Add contact
               </summary>
               <form action={addContact} className="space-y-2 px-4 pb-4">

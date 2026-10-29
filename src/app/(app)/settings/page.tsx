@@ -21,10 +21,10 @@ function Status({ ok, label }: { ok: boolean; label: string }) {
   return (
     <div className="flex items-center gap-2 text-[12px]">
       <span
-        className={`h-1.5 w-1.5 rounded-full ${ok ? "bg-emerald-400" : "bg-amber-400"}`}
+        className={`h-1.5 w-1.5 rounded-full ${ok ? "bg-success" : "bg-warn"}`}
       />
       <span className="text-muted">{label}</span>
-      <span className={`ml-auto ${ok ? "text-emerald-300" : "text-amber-300"}`}>
+      <span className={`ml-auto ${ok ? "text-success" : "text-warn"}`}>
         {ok ? "ready" : "missing"}
       </span>
     </div>
@@ -59,7 +59,7 @@ export default async function SettingsPage() {
               {tokenIsSet ? (
                 <CopyField value={EXTENSION_TOKEN} />
               ) : (
-                <p className="rounded-lg border border-amber-400/25 bg-amber-400/10 px-2.5 py-2 text-[11.5px] text-amber-300">
+                <p className="rounded-lg border border-warn/25 bg-warn-soft px-2.5 py-2 text-[11.5px] text-warn">
                   Set <code className="mono">EXTENSION_TOKEN</code> in{" "}
                   <code className="mono">.env.local</code> to a long random string,
                   restart the server, then reload this page.
@@ -70,13 +70,13 @@ export default async function SettingsPage() {
             <ol className="space-y-2 text-[12px] leading-relaxed text-muted">
               <li>
                 <span className="text-fg">1.</span> Open{" "}
-                <code className="mono text-accent">chrome://extensions</code> and
+                <code className="mono text-fg-2">chrome://extensions</code> and
                 enable Developer mode.
               </li>
               <li>
                 <span className="text-fg">2.</span> Click{" "}
                 <span className="text-fg">Load unpacked</span> and pick the{" "}
-                <code className="mono text-accent">extension</code> folder in this
+                <code className="mono text-fg-2">extension</code> folder in this
                 project.
               </li>
               <li>
@@ -100,7 +100,7 @@ export default async function SettingsPage() {
               <Status ok={isSupabaseConfigured} label="Supabase connection" />
               <Status ok={SUPABASE_SERVICE_KEY.length > 20} label="Service role key (screenshots)" />
               <Status ok={tokenIsSet} label="Extension token" />
-              <div className="my-1 h-px bg-line/60" />
+              <div className="my-1 h-px bg-line" />
               {providers.map((p) => {
                 const configured = p.key.length > 10;
                 const active = ai.primary === p.id;
@@ -109,19 +109,19 @@ export default async function SettingsPage() {
                     <span
                       className={`h-1.5 w-1.5 rounded-full ${
                         active
-                          ? "bg-emerald-400"
+                          ? "bg-success"
                           : configured
-                            ? "bg-sky-400"
-                            : "bg-line2"
+                            ? "bg-info"
+                            : "bg-line-3"
                       }`}
                     />
                     <span className="text-muted">{p.label}</span>
                     <span
                       className={`ml-auto ${
                         active
-                          ? "text-emerald-300"
+                          ? "text-success"
                           : configured
-                            ? "text-sky-300"
+                            ? "text-info"
                             : "text-muted/60"
                       }`}
                     >
@@ -131,7 +131,7 @@ export default async function SettingsPage() {
                 );
               })}
             </div>
-            <div className="border-t border-line/60 px-4 py-2.5 text-[11px] leading-relaxed text-muted">
+            <div className="border-t border-line px-4 py-2.5 text-[11px] leading-relaxed text-muted">
               {ai.primary === "offline"
                 ? "No AI provider — the offline regex parser is used. Add any free key (Gemini, OpenRouter or Groq) for much better extraction."
                 : `AI parsing is on (${ai.primary}). Providers are tried in order; the offline parser is the last resort.`}

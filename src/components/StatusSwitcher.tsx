@@ -24,10 +24,10 @@ export function StatusSwitcher({
             type="button"
             disabled={pending || active}
             onClick={() => startTransition(() => updateStatus(jobId, s))}
-            className={`pill transition ${
+            className={`pill transition-colors ${
               active
                 ? `${STATUS_META[s].pill} cursor-default`
-                : "border-line bg-transparent text-muted hover:border-line2 hover:text-fg"
+                : "border-line bg-transparent text-muted hover:border-line-3 hover:text-fg"
             }`}
           >
             <span

@@ -74,7 +74,7 @@ export function LoginForm() {
       </div>
 
       {error && (
-        <p className="rounded-lg border border-danger/25 bg-danger-soft px-3 py-2 text-xs text-danger">
+        <p className="rounded-md border border-danger/25 bg-danger-soft px-3 py-2 text-[12px] text-danger">
           {error}
         </p>
       )}
@@ -83,10 +83,6 @@ export function LoginForm() {
         {busy ? "Signing in…" : "Sign in"}
       </Button>
 
-      <p className="text-center text-[11px] text-muted">
-        Single-user workspace. Create your account in Supabase → Authentication →
-        Users, then sign in here.
-      </p>
     </form>
   );
 }

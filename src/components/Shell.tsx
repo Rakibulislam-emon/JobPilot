@@ -14,25 +14,21 @@ export function PageHeader({
   eyebrow?: string;
 }) {
   return (
-    <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
+    <header className="mb-8 flex flex-wrap items-start justify-between gap-4 border-b border-line pb-6">
       <div>
         {eyebrow && (
-          <div className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-muted">
-            {eyebrow}
-          </div>
+          <div className="mb-2 text-[11px] font-medium text-muted-2">{eyebrow}</div>
         )}
-        <h1 className="display text-[32px] tracking-tight text-fg md:text-[40px]">
-          {title}
-        </h1>
+        <h1 className="display text-[26px] text-fg md:text-[30px]">{title}</h1>
         {subtitle && (
-          <p className="mt-2 max-w-xl text-[13.5px] leading-relaxed text-muted">
+          <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-muted">
             {subtitle}
           </p>
         )}
       </div>
       {action && (
         <Link href={action.href} className="btn btn-primary">
-          <Icon name={action.icon ?? "plus"} size={15} />
+          <Icon name={action.icon ?? "plus"} size={14} />
           {action.label}
         </Link>
       )}
@@ -52,18 +48,16 @@ export function EmptyState({
   icon?: "briefcase" | "grid" | "search";
 }) {
   return (
-    <div className="card flex flex-col items-center justify-center px-6 py-16 text-center">
-      <div className="mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft ring-1 ring-accent/20">
-        <Icon name={icon} size={22} className="text-accent" />
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-line-2 px-6 py-16 text-center">
+      <div className="mb-4 grid h-10 w-10 place-items-center rounded-lg border border-line-2 bg-surface-2">
+        <Icon name={icon} size={17} className="text-muted" />
       </div>
-      <h3 className="font-display text-[18px] tracking-tight text-fg">
-        {title}
-      </h3>
-      <p className="mt-2 max-w-sm text-[13px] leading-relaxed text-muted">
+      <h3 className="text-[14px] font-medium tracking-tight text-fg">{title}</h3>
+      <p className="mt-1.5 max-w-sm text-[12.5px] leading-relaxed text-muted">
         {body}
       </p>
       {cta && (
-        <Link href={cta.href} className="btn btn-primary mt-6">
+        <Link href={cta.href} className="btn btn-primary mt-5">
           {cta.label}
         </Link>
       )}
@@ -84,10 +78,8 @@ export function Section({
 }) {
   return (
     <section className={`card overflow-hidden ${className}`}>
-      <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
-          {title}
-        </h2>
+      <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
+        <h2 className="text-[12px] font-medium text-fg-2">{title}</h2>
         {right}
       </div>
       {children}
@@ -109,23 +101,27 @@ export function StatCard({
   trend?: { value: string; positive: boolean };
 }) {
   return (
-    <div className="card card-hover p-5">
-      <div className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-muted">
-        {label}
-      </div>
-      <div className="mt-3 flex items-baseline gap-2">
-        <span className={`font-display text-[34px] leading-none tracking-tight ${accent ? "text-accent" : "text-fg"}`}>
+    <div className="card card-hover p-4">
+      <div className="text-[12px] text-muted">{label}</div>
+      <div className="mt-2 flex items-baseline gap-2">
+        <span
+          className={`mono text-[26px] font-semibold leading-none tracking-tight ${
+            accent ? "text-accent" : "text-fg"
+          }`}
+        >
           {value}
         </span>
         {trend && (
-          <span className={`text-[11px] font-medium ${trend.positive ? "text-success" : "text-danger"}`}>
+          <span
+            className={`text-[11px] font-medium ${
+              trend.positive ? "text-success" : "text-danger"
+            }`}
+          >
             {trend.value}
           </span>
         )}
       </div>
-      {hint && (
-        <div className="mt-2 text-[11.5px] text-muted-2">{hint}</div>
-      )}
+      {hint && <div className="mt-1.5 text-[11.5px] text-muted-2">{hint}</div>}
     </div>
   );
 }
