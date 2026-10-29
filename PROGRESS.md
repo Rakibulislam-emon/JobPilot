@@ -258,6 +258,12 @@ git push -u origin redesign/modern-ui
 - legacy colors (emerald/amber/sky/rose) mapped to `success/warn/info/danger`
 - tsc + build pass, commit `01c1eda`
 
+### 2026-10-29 (session 3)
+- **bug fix:** board columns were cut off and not scrollable
+  - root cause: `main` flex item lacked `min-w-0`, so it grew past the viewport and the outer `overflow-hidden` clipped it
+  - fix: `min-w-0 flex-1` on `main` + `.board-scroll` (thin always-visible horizontal scrollbar, `overscroll-behavior-x: contain`)
+  - board now full-bleed (`-mx-4 md:-mx-8` + matching padding) with a trailing spacer so the last column is not clipped
+
 ### 2026-10-29 (session 1)
 - shadcn init + 5 components install
 - `globals.css` puro rewrite: dark neutral palette, Geist typography, shadcn light leak fix

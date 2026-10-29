@@ -13,7 +13,7 @@ export default async function AppLayout({
   return (
     <div className="md:flex md:h-screen md:overflow-hidden">
       <Sidebar email={user.email ?? ""} />
-      <main className="flex-1 md:h-screen md:overflow-y-auto">
+      <main className="min-w-0 flex-1 md:h-screen md:overflow-y-auto">
         <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-8 md:py-8">
           {children}
         </div>

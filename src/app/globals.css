@@ -295,6 +295,28 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
+  /* Horizontal kanban scroll — always visible, thin, subtle */
+  .board-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-3) transparent;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .board-scroll::-webkit-scrollbar {
+    height: 10px;
+  }
+  .board-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .board-scroll::-webkit-scrollbar-thumb {
+    background: var(--color-line-3);
+    border: 3px solid var(--color-bg);
+    border-radius: 9999px;
+  }
+  .board-scroll::-webkit-scrollbar-thumb:hover {
+    background: #4a4a4a;
+  }
 }
 
 /* ── Animations ────────────────────────────────────────────── */

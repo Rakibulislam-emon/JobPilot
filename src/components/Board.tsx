@@ -25,7 +25,7 @@ export function Board({ jobs }: { jobs: Job[] }) {
   }
 
   return (
-    <div className="no-scrollbar flex gap-3 overflow-x-auto pb-4">
+    <div className="board-scroll -mx-4 flex gap-3 overflow-x-auto px-4 pb-3 md:-mx-8 md:px-8">
       {BOARD_COLUMNS.map((status) => {
         const items = jobs.filter((j) => statusOf(j) === status);
         const meta = STATUS_META[status];
@@ -132,6 +132,7 @@ export function Board({ jobs }: { jobs: Job[] }) {
           </div>
         );
       })}
+      <div aria-hidden className="w-px shrink-0" />
     </div>
   );
 }
