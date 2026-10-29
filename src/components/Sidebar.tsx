@@ -23,7 +23,7 @@ export function Sidebar({ email }: { email: string }) {
           <span className="h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_16px_3px_rgba(20,184,166,.5)]" />
         </div>
         <div className="leading-none">
-          <div className="font-display text-[17px] font-normal tracking-tight text-fg">
+          <div className="font-display text-[17px] tracking-tight text-fg">
             Job<span className="text-accent">Desk</span>
           </div>
           <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-2">

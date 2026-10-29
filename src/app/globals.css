@@ -1,14 +1,18 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 /* ── Design tokens ─────────────────────────────────────────── */
 @theme {
-  /* Surfaces */
-  --color-bg: #0a0e14;
-  --color-bg-2: #0d1219;
-  --color-surface: #111820;
-  --color-surface-2: #16202a;
-  --color-surface-3: #1c2a36;
-  --color-surface-hover: #1e2e3c;
+  /* Surfaces — neutral near-black, Vercel-ish */
+  --color-bg: #09090b;
+  --color-bg-2: #0c0c0f;
+  --color-surface: #101013;
+  --color-surface-2: #16161a;
+  --color-surface-3: #1d1d22;
+  --color-surface-hover: #232329;
 
   /* Legacy aliases (backward compat) */
   --color-ink: var(--color-bg);
@@ -17,21 +21,21 @@
   --color-panel2: var(--color-surface-2);
 
   /* Lines */
-  --color-line: #1e2d3a;
-  --color-line-2: #2a3f50;
-  --color-line-3: #3a5568;
+  --color-line: #232329;
+  --color-line-2: #2e2e36;
+  --color-line-3: #3f3f4a;
 
   /* Text */
-  --color-fg: #e8edf2;
-  --color-fg-2: #b8c5d0;
-  --color-muted: #6b7f8e;
-  --color-muted-2: #4a5a68;
+  --color-fg: #fafafa;
+  --color-fg-2: #c7c7cf;
+  --color-muted: #8b8b96;
+  --color-muted-2: #5c5c66;
 
   /* Accent — teal, used sparingly */
   --color-accent: #14b8a6;
   --color-accent-2: #0d9488;
   --color-accent-soft: rgba(20, 184, 166, 0.10);
-  --color-accent-glow: rgba(20, 184, 166, 0.18);
+  --color-accent-glow: rgba(20, 184, 166, 0.16);
 
   /* Legacy accent alias */
   --color-brand: var(--color-accent);
@@ -47,19 +51,20 @@
   --color-info: #60a5fa;
   --color-info-soft: rgba(96, 165, 250, 0.10);
 
-  /* Typography */
+  /* Typography — Geist everywhere, Vercel style */
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-display: var(--font-fraunces), "Instrument Serif", Georgia, serif;
+  --font-display: var(--font-geist-sans), ui-sans-serif, system-ui,
+    -apple-system, "Segoe UI", sans-serif;
   --font-mono: var(--font-geist-mono), "JetBrains Mono", ui-monospace,
     "SFMono-Regular", Consolas, monospace;
   --font-bangla: var(--font-hind-siliguri), "Hind Siliguri", "Noto Sans Bengali", sans-serif;
 
   /* Shadows */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.45);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.55);
   --shadow-glow: 0 0 24px rgba(20, 184, 166, 0.12);
 }
 
@@ -67,6 +72,7 @@
 @layer base {
   html {
     color-scheme: dark;
+    @apply font-sans;
   }
 
   body {
@@ -76,7 +82,7 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background-image:
-      radial-gradient(ellipse 120% 80% at 50% -20%, rgba(20, 184, 166, 0.06), transparent 50%);
+      radial-gradient(ellipse 120% 80% at 50% -20%, rgba(20, 184, 166, 0.05), transparent 50%);
     background-attachment: fixed;
   }
 
@@ -108,6 +114,10 @@
   /* Bangla text rendering */
   .bangla, [lang="bn"] {
     font-family: var(--font-bangla), var(--font-sans);
+  }
+
+  * {
+    border-color: var(--color-line);
   }
 }
 
@@ -146,9 +156,9 @@
   .input {
     width: 100%;
     border-radius: 0.625rem;
-    border: 1px solid var(--color-line);
+    border: 1px solid var(--color-line-2);
     background: var(--color-surface-2);
-    padding: 0.6rem 0.75rem;
+    padding: 0.55rem 0.75rem;
     font-size: 0.875rem;
     color: var(--color-fg);
     outline: none;
@@ -169,7 +179,7 @@
 
   select.input {
     appearance: none;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b7f8e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238b8b96' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
     background-repeat: no-repeat;
     background-position: right 0.7rem center;
     padding-right: 2rem;
@@ -255,10 +265,11 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Vercel-style display heading: sans, tight, semibold */
   .display {
     font-family: var(--font-display);
-    font-weight: 400;
-    letter-spacing: -0.02em;
+    font-weight: 600;
+    letter-spacing: -0.03em;
     line-height: 1.1;
   }
 

@@ -8,7 +8,7 @@ export function CopyField({ value }: { value: string }) {
 
   return (
     <div className="flex items-center gap-2">
-      <code className="mono flex-1 truncate rounded-lg border border-line bg-ink2 px-2.5 py-2 text-[11.5px] text-brand/90">
+      <code className="mono flex-1 truncate rounded-lg border border-line bg-surface-2 px-2.5 py-2 text-[11.5px] text-accent/90">
         {value || "not set"}
       </code>
       <button

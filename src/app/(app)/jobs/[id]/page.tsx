@@ -99,7 +99,7 @@ export default async function JobDetailPage({
           <div className="card p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
-                <h1 className="display text-[24px] font-normal tracking-tight text-fg">
+                <h1 className="display text-[24px] tracking-tight text-fg">
                   {job.title || "(untitled role)"}
                 </h1>
                 <p className="mt-1 text-[13px] text-muted">

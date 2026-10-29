@@ -21,7 +21,7 @@ export function PageHeader({
             {eyebrow}
           </div>
         )}
-        <h1 className="display text-[32px] font-normal tracking-tight text-fg md:text-[40px]">
+        <h1 className="display text-[32px] tracking-tight text-fg md:text-[40px]">
           {title}
         </h1>
         {subtitle && (
@@ -56,7 +56,7 @@ export function EmptyState({
       <div className="mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft ring-1 ring-accent/20">
         <Icon name={icon} size={22} className="text-accent" />
       </div>
-      <h3 className="font-display text-[18px] font-normal tracking-tight text-fg">
+      <h3 className="font-display text-[18px] tracking-tight text-fg">
         {title}
       </h3>
       <p className="mt-2 max-w-sm text-[13px] leading-relaxed text-muted">
@@ -114,7 +114,7 @@ export function StatCard({
         {label}
       </div>
       <div className="mt-3 flex items-baseline gap-2">
-        <span className={`font-display text-[34px] font-normal leading-none tracking-tight ${accent ? "text-accent" : "text-fg"}`}>
+        <span className={`font-display text-[34px] leading-none tracking-tight ${accent ? "text-accent" : "text-fg"}`}>
           {value}
         </span>
         {trend && (

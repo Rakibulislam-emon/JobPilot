@@ -12,3 +12,9 @@ yarn-error.log*
 .vercel
 next-env.d.ts
 *.tsbuildinfo
+
+# playwright mcp screenshots
+.playwright-mcp
+
+# alternate build output (dev server running)
+.next-build

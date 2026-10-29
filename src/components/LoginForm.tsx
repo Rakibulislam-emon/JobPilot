@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export function LoginForm() {
   const router = useRouter();
@@ -34,47 +37,51 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="label" htmlFor="email">
+      <div className="space-y-1.5">
+        <Label
+          htmlFor="email"
+          className="text-[10.5px] font-semibold tracking-[0.1em] text-muted uppercase"
+        >
           Email
-        </label>
-        <input
+        </Label>
+        <Input
           id="email"
           type="email"
           required
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="input"
           placeholder="you@example.com"
         />
       </div>
 
-      <div>
-        <label className="label" htmlFor="password">
+      <div className="space-y-1.5">
+        <Label
+          htmlFor="password"
+          className="text-[10.5px] font-semibold tracking-[0.1em] text-muted uppercase"
+        >
           Password
-        </label>
-        <input
+        </Label>
+        <Input
           id="password"
           type="password"
           required
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="input"
           placeholder="••••••••"
         />
       </div>
 
       {error && (
-        <p className="rounded-lg border border-rose-400/25 bg-rose-400/10 px-3 py-2 text-xs text-rose-300">
+        <p className="rounded-lg border border-danger/25 bg-danger-soft px-3 py-2 text-xs text-danger">
           {error}
         </p>
       )}
 
-      <button type="submit" disabled={busy} className="btn btn-primary w-full">
+      <Button type="submit" disabled={busy} size="lg" className="w-full">
         {busy ? "Signing in…" : "Sign in"}
-      </button>
+      </Button>
 
       <p className="text-center text-[11px] text-muted">
         Single-user workspace. Create your account in Supabase → Authentication →
