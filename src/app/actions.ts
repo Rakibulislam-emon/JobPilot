@@ -129,11 +129,11 @@ export async function saveJob(formData: FormData) {
   redirect(`/jobs/${created.id}`);
 }
 
-export async function updateStatus(jobId: string, status: Status) {
+export async function updateStatus(jobId: string, status: Status): Promise<{ ok: true } | { error: string }> {
   const user = await requireUser();
   const supabase = await createClient();
 
-  if (!STATUSES.includes(status)) return;
+  if (!STATUSES.includes(status)) return { error: "Invalid job status." };
 
   const { data: previous } = await supabase
     .from("jobs")
@@ -142,16 +142,19 @@ export async function updateStatus(jobId: string, status: Status) {
     .eq("user_id", user.id)
     .single();
 
+  if (!previous) return { error: "Job not found or access denied." };
+
   const patch: Record<string, unknown> = { status };
   if (status === "applied" && previous?.status !== "applied") {
     patch.applied_at = new Date().toISOString().slice(0, 10);
   }
 
-  await supabase
+  const { error } = await supabase
     .from("jobs")
     .update(patch)
     .eq("id", jobId)
     .eq("user_id", user.id);
+  if (error) return { error: error.message };
 
   if (previous && previous.status !== status) {
     await supabase.from("activities").insert({
@@ -165,6 +168,7 @@ export async function updateStatus(jobId: string, status: Status) {
   }
 
   revalidateAll();
+  return { ok: true };
 }
 
 export async function addNote(formData: FormData) {

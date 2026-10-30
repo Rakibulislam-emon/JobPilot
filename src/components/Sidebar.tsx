@@ -64,14 +64,14 @@ export function Sidebar({ email }: SidebarProps) {
   return (
     <>
       {/* Persistent mobile app bar */}
-      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-black/90 px-4 backdrop-blur-md md:hidden">
+      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-bg/95 px-4 backdrop-blur-md md:hidden">
         <Link
           href="/"
           className="flex min-w-0 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           aria-label="JobDesk dashboard"
         >
-          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-line-2 bg-surface-2">
-            <span className="h-2 w-2 rounded-full bg-accent" />
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-line-2 bg-surface-2 text-fg">
+            <Icon name="briefcase" size={15} />
           </span>
           <span className="truncate text-[14px] font-semibold tracking-tight text-fg">JobDesk</span>
         </Link>
@@ -102,7 +102,7 @@ export function Sidebar({ email }: SidebarProps) {
       <aside
         id="app-sidebar"
         aria-label="Primary"
-        className={`fixed left-0 top-0 z-50 flex h-dvh w-72 max-w-[85vw] flex-col border-r border-line bg-black shadow-xl transition-transform duration-300 ease-in-out motion-reduce:transition-none md:static md:w-60 md:shrink-0 md:max-w-none md:translate-x-0 md:shadow-none ${
+        className={`fixed left-0 top-0 z-50 flex h-dvh w-72 max-w-[85vw] flex-col border-r border-line bg-bg shadow-2xl transition-transform duration-300 ease-in-out motion-reduce:transition-none md:static md:w-60 md:shrink-0 md:max-w-none md:translate-x-0 md:shadow-none ${
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -123,8 +123,8 @@ export function Sidebar({ email }: SidebarProps) {
           aria-label="JobDesk dashboard"
           className="flex items-center gap-2.5 px-4 py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent sm:px-5 sm:py-5"
         >
-          <div className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-line-2 bg-surface-2">
-            <span className="h-2 w-2 rounded-full bg-accent" />
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-line-2 bg-surface-2 text-fg">
+            <Icon name="briefcase" size={15} />
           </div>
           <div className="min-w-0 leading-tight">
             <div className="truncate text-[13.5px] font-semibold tracking-tight text-fg">
@@ -137,7 +137,11 @@ export function Sidebar({ email }: SidebarProps) {
         </Link>
 
         {/* Nav */}
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-2.5 pb-3">
+        <nav aria-label="Workspace" className="flex flex-1 flex-col overflow-y-auto px-3 pb-3">
+          <div className="mb-2 mt-4 hidden px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-2 md:block">
+            Workspace
+          </div>
+          <div className="flex flex-col gap-1">
           {NAV.map((item) => {
             const active = isActive(item.href, pathname);
 
@@ -147,7 +151,7 @@ export function Sidebar({ email }: SidebarProps) {
                 href={item.href}
                 onClick={handleNavClick}
                 aria-current={active ? "page" : undefined}
-                className={`group relative flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                className={`group relative flex min-h-10 items-center gap-3 rounded-lg px-2.5 py-2 text-[12.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                   active
                     ? "bg-surface-2 font-medium text-fg before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-fg"
                     : "text-muted hover:bg-surface-2/60 hover:text-fg"
@@ -167,18 +171,20 @@ export function Sidebar({ email }: SidebarProps) {
               </Link>
             );
           })}
+          </div>
         </nav>
 
         {/* Footer */}
         <div className="mt-auto border-t border-line p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <div className="mb-2 flex items-center gap-2.5 px-2 py-1.5">
-            <div className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-line-2 bg-surface-2 text-[10px] font-medium text-fg-2">
+          <div className="mb-2 flex items-center gap-2.5 rounded-lg border border-line bg-surface px-2.5 py-2.5">
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-line-2 bg-surface-2 text-[11px] font-medium text-fg">
               {email.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-[11.5px] text-fg-2" title={email}>
+              <div className="truncate text-[11px] font-medium text-fg" title={email}>
                 {email}
               </div>
+              <div className="mt-0.5 text-[9.5px] text-muted-2">Personal workspace</div>
             </div>
           </div>
           <form action="/auth/signout" method="post">

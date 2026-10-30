@@ -1,7 +1,8 @@
+import { Icon } from "@/components/Icon";
 import { JobsFilterBar } from "@/components/JobsFilterBar";
 import { PageHeader } from "@/components/Shell";
 import { StatusPill } from "@/components/StatusPill";
-import { SOURCES, STATUS_META, STATUS_ORDER } from "@/lib/constants";
+import { SOURCES, STATUS_ORDER } from "@/lib/constants";
 import { daysUntil, formatDate, relativeTime } from "@/lib/format";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import type { Job } from "@/lib/types";
@@ -94,6 +95,10 @@ function DeadlineCell({ job }: { job: Job }) {
   );
 }
 
+function companyMark(value: string): string {
+  return value.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("") || "?";
+}
+
 export default async function JobsPage({
   searchParams,
 }: {
@@ -168,10 +173,9 @@ export default async function JobsPage({
   return (
     <div className="animate-in">
       <PageHeader
+        eyebrow="APPLICATIONS"
         title="Jobs"
-        subtitle={`${total} result${total === 1 ? "" : "s"}${
-          hasFilters ? " (filtered)" : ""
-        }`}
+        subtitle="Keep every opportunity organized, from saved links to final decisions."
         action={{ href: "/jobs/new", label: "Add job" }}
       />
 
@@ -195,13 +199,19 @@ export default async function JobsPage({
         </div>
       ) : (
         <div className="card overflow-hidden">
-          {/* header row — desktop only */}
-          <div className="hidden grid-cols-[1fr_120px_100px_110px_90px] gap-3 border-b border-line px-4 py-2.5 text-[11.5px] font-medium text-muted-2 md:grid">
-            <span>Role / company</span>
+          <div className="flex items-center justify-between border-b border-line px-4 py-3 sm:px-5">
+            <div>
+              <div className="text-[12px] font-medium text-fg">Your applications</div>
+              <div className="mt-0.5 text-[10.5px] text-muted">{total} result{total === 1 ? "" : "s"}{hasFilters ? " · filtered" : " · sorted by latest"}</div>
+            </div>
+            <span className="mono text-[10px] text-muted-2">{page}/{pageCount}</span>
+          </div>
+
+          <div className="hidden grid-cols-[minmax(0,1.5fr)_120px_100px_130px] gap-3 border-b border-line bg-surface-2/40 px-5 py-2.5 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-2 md:grid">
+            <span>Company / role</span>
             <span>Status</span>
             <span>Source</span>
-            <span>Deadline</span>
-            <span className="text-right">Updated</span>
+            <span className="text-right">Deadline</span>
           </div>
 
           <ul className="divide-y divide-line">
@@ -209,47 +219,42 @@ export default async function JobsPage({
               <li key={job.id}>
                 <Link
                   href={`/jobs/${job.id}`}
-                  className="group grid grid-cols-1 gap-2 px-4 py-3 transition-colors hover:bg-surface-2/50 md:grid-cols-[1fr_120px_100px_110px_90px] md:items-center md:gap-3"
+                  className="group relative grid grid-cols-1 gap-2.5 px-3 py-3.5 transition-colors hover:bg-surface-2/50 sm:px-5 md:grid-cols-[minmax(0,1.5fr)_120px_100px_130px] md:items-center md:gap-3"
                 >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate text-[13px] font-medium text-fg">
-                        {job.title || "(untitled role)"}
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line-2 bg-surface-2 text-[10px] font-semibold text-fg-2 transition group-hover:border-line-3 group-hover:text-fg">
+                      {companyMark(job.company || job.title || job.url)}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="truncate text-[12.5px] font-medium text-fg">{job.company || "Company not set"}</span>
+                        {job.priority <= 2 && (
+                          <span className="pill shrink-0 border-line-2 bg-transparent px-1.5 py-0 text-[9px] text-fg-2">
+                            {job.priority === 1 ? "priority" : "high"}
+                          </span>
+                        )}
                       </span>
-                      {job.priority <= 2 && (
-                        <span className="pill border-line-2 bg-transparent px-1.5 py-0 text-[9.5px] text-fg-2">
-                          {job.priority === 1 ? "dream" : "high"}
-                        </span>
-                      )}
-                    </div>
-                    <div className="truncate text-[11.5px] text-muted">
-                      {job.company || "Unknown company"}
-                      {job.location ? ` · ${job.location}` : ""}
-                    </div>
+                      <span className="mt-0.5 flex min-w-0 items-center gap-1.5 truncate text-[11px] text-muted">
+                        <span className="truncate">{job.title || "Role not set"}</span>
+                        {job.location && <><span className="text-line-3">·</span><span className="truncate">{job.location}</span></>}
+                      </span>
+                    </span>
                   </div>
 
-                  <div className="md:block">
+                  <div className="flex items-center justify-between gap-2 md:block">
                     <StatusPill status={job.status} />
+                    <span className="text-[10px] text-muted md:hidden">{relativeTime(job.updated_at)}</span>
                   </div>
 
                   <div className="hidden text-[11.5px] capitalize text-muted md:block">
                     {job.source || "—"}
                   </div>
 
-                  <div className="hidden md:block">
+                  <div className="flex items-center justify-between text-[11px] md:block md:text-right">
+                    <span className="text-[10px] text-muted md:hidden">Deadline</span>
                     <DeadlineCell job={job} />
                   </div>
-
-                  <div className="hidden text-right text-[11px] text-muted md:block">
-                    {relativeTime(job.updated_at)}
-                  </div>
-
-                  {/* mobile meta row */}
-                  <div className="flex items-center gap-3 text-[11px] text-muted md:hidden">
-                    <DeadlineCell job={job} />
-                    <span className="capitalize">{job.source || "—"}</span>
-                    <span className="ml-auto">{relativeTime(job.updated_at)}</span>
-                  </div>
+                  <Icon name="external" size={13} className="absolute right-4 hidden text-muted-2 opacity-0 transition group-hover:opacity-100 xl:block" />
                 </Link>
               </li>
             ))}

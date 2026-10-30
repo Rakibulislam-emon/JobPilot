@@ -1,9 +1,9 @@
 "use client";
 
-import { useTransition } from "react";
 import { updateStatus } from "@/app/actions";
 import { STATUS_META, STATUS_ORDER } from "@/lib/constants";
 import type { Status } from "@/lib/types";
+import { useState, useTransition } from "react";
 
 export function StatusSwitcher({
   jobId,
@@ -13,9 +13,11 @@ export function StatusSwitcher({
   current: Status;
 }) {
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState("");
 
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div>
+      <div className="flex flex-wrap gap-1.5">
       {STATUS_ORDER.map((s) => {
         const active = s === current;
         return (
@@ -23,7 +25,11 @@ export function StatusSwitcher({
             key={s}
             type="button"
             disabled={pending || active}
-            onClick={() => startTransition(() => updateStatus(jobId, s))}
+            onClick={() => startTransition(async () => {
+              setError("");
+              const result = await updateStatus(jobId, s);
+              if ("error" in result) setError(result.error);
+            })}
             className={`pill transition-colors ${
               active
                 ? `${STATUS_META[s].pill} cursor-default`
@@ -39,6 +45,8 @@ export function StatusSwitcher({
           </button>
         );
       })}
+      </div>
+      {error && <p role="alert" className="mt-2 text-[11px] text-danger">{error}</p>}
     </div>
   );
 }
