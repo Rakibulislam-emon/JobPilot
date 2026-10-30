@@ -11,10 +11,11 @@ export default async function AppLayout({
   const user = await requireUser();
 
   return (
-    <div className="md:flex md:h-screen md:overflow-hidden">
+    <div className="flex min-h-dvh flex-col md:h-dvh md:min-h-0 md:flex-row md:overflow-hidden">
       <Sidebar email={user.email ?? ""} />
-      <main className="min-w-0 flex-1 md:h-screen md:overflow-y-auto">
-        <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-8 md:py-8">
+
+      <main className="relative flex min-h-0 min-w-0 flex-1 md:overflow-y-auto">
+        <div className="mx-auto w-full max-w-[1600px] px-4 pt-18 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:px-6 md:px-8 md:py-8 2xl:px-10">
           {children}
         </div>
       </main>

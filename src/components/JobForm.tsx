@@ -1,15 +1,16 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
-import Link from "next/link";
 import { saveJob } from "@/app/actions";
-import { Icon } from "./Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { JOB_TYPES, PRIORITY_LABELS, SOURCES, STATUS_META, STATUS_ORDER } from "@/lib/constants";
+import { PRIORITY_LABELS, SOURCES, STATUS_META, STATUS_ORDER } from "@/lib/constants";
 import { formatDateInput } from "@/lib/format";
 import { fileToDataUrl, ocrDataUrl } from "@/lib/image";
+import { extractJobUrl } from "@/lib/jobUrl";
 import type { Job, Status } from "@/lib/types";
+import Link from "next/link";
+import { useActionState, useRef, useState } from "react";
+import { Icon } from "./Icon";
 
 type Draft = {
   company: string;
@@ -36,6 +37,8 @@ export function JobForm({ job }: { job?: Job }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [confidence, setConfidence] = useState<Record<string, number>>({});
   const [scan, setScan] = useState<ScanState>({ busy: false });
+  const [postText, setPostText] = useState("");
+  const [imagePreview, setImagePreview] = useState("");
 
   const [state, formAction, pending] = useActionState(
     async (_prev: { error?: string } | null, fd: FormData) => {
@@ -71,26 +74,30 @@ export function JobForm({ job }: { job?: Job }) {
 
     try {
       const dataUrl = await fileToDataUrl(file);
-
-      let res = await postParse({
-        image: dataUrl,
-        url: getField("url"),
-        title: getField("title"),
-      });
-
-      // No AI key → a vision-free parse is useless. Fall back to offline OCR.
-      if (res.engine === "heuristic" && !res.draft.title) {
-        setScan({ busy: true, message: "Running offline OCR…", progress: 0 });
-        const text = await ocrDataUrl(dataUrl, (pct) =>
-          setScan((s) => ({ ...s, progress: pct }))
-        );
-        if (text.trim().length > 20) {
-          res = await postParse({
-            text,
-            url: getField("url"),
-            title: getField("title"),
-          });
-        }
+      setImagePreview(dataUrl);
+      let usedOcr = false;
+      setScan({ busy: true, message: "Reading text from screenshot…", progress: 0 });
+      const text = await ocrDataUrl(dataUrl, (pct) =>
+        setScan((s) => ({ ...s, progress: pct }))
+      );
+      let res;
+      if (text.trim().length > 20) {
+        usedOcr = true;
+        setPostText(text.trim());
+        setField("url", extractJobUrl(text));
+        res = await postParse({
+          text,
+          image: dataUrl,
+          url: getField("url"),
+          title: getField("title"),
+        });
+      } else {
+        setScan({ busy: true, message: "OCR found little text; trying image AI…" });
+        res = await postParse({
+          image: dataUrl,
+          url: getField("url"),
+          title: getField("title"),
+        });
       }
 
       applyDraft(res.draft);
@@ -104,7 +111,11 @@ export function JobForm({ job }: { job?: Job }) {
         busy: false,
         engine: res.engine,
         message:
-          res.warning ??
+          (usedOcr && res.engine === "offline:rules"
+            ? "Image text was read with offline OCR and local rules; no AI request was needed. Review the extracted fields."
+            : usedOcr && res.engine === "heuristic"
+              ? "Image text was read with offline OCR. AI was unavailable, so review the extracted fields carefully."
+            : res.warning) ??
           `Filled from screenshot (${labelForEngine(res.engine)}). ${
             low > 0 ? `${low} field(s) look uncertain — check them.` : "Review before saving."
           }`,
@@ -117,17 +128,69 @@ export function JobForm({ job }: { job?: Job }) {
     }
   }
 
+  async function runTextParse(text = postText) {
+    const value = text.trim();
+    if (!value) {
+      setScan({ busy: false, error: "Paste the job post text first." });
+      return;
+    }
+    setScan({ busy: true, message: "Extracting job details from text…" });
+    setConfidence({});
+    try {
+      setField("url", extractJobUrl(value));
+      const res = await postParse({
+        text: value,
+        url: getField("url"),
+        title: getField("title"),
+        ...(imagePreview ? { image: imagePreview } : {}),
+      });
+      applyDraft(res.draft);
+      setConfidence(res.draft.confidence ?? {});
+      setScan({
+        busy: false,
+        engine: res.engine,
+        message: res.warning ?? `Fields extracted (${labelForEngine(res.engine)}). Review before saving.`,
+      });
+    } catch (err) {
+      setScan({ busy: false, error: err instanceof Error ? err.message : "Text extraction failed." });
+    }
+  }
+
+  function handlePostPaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const imageItem = Array.from(event.clipboardData.items).find((item) => item.type.startsWith("image/"));
+    const file = imageItem?.getAsFile();
+    if (!file) return;
+    event.preventDefault();
+    if (fileRef.current) {
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      fileRef.current.files = transfer.files;
+    }
+    void runScan(file);
+  }
+
+  function handleImagePaste(event: React.ClipboardEvent<HTMLDivElement>) {
+    if (event.defaultPrevented) return;
+    const item = Array.from(event.clipboardData.items).find((entry) => entry.type.startsWith("image/"));
+    const file = item?.getAsFile();
+    if (!file) return;
+    event.preventDefault();
+    if (fileRef.current) {
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      fileRef.current.files = transfer.files;
+    }
+    void runScan(file);
+  }
+
   function applyDraft(d: Draft) {
     setField("title", d.title);
     setField("company", d.company);
     setField("location", d.location);
     setField("salary", d.salary);
-    setField("deadline", d.deadline);
-    setField("description", d.description);
-    if (d.job_type) {
-      const sel = formRef.current?.elements.namedItem("job_type");
-      if (sel instanceof HTMLSelectElement && !sel.value) sel.value = d.job_type;
-    }
+    setField("deadline", d.deadline, true);
+    setField("description", d.description, true);
+    setField("job_type", d.job_type, true);
     if (d.source) {
       const sel = formRef.current?.elements.namedItem("source");
       if (sel instanceof HTMLSelectElement && !sel.value) sel.value = d.source;
@@ -175,17 +238,37 @@ export function JobForm({ job }: { job?: Job }) {
         {job?.screenshot && (
           <input type="hidden" name="screenshot" defaultValue={job.screenshot} />
         )}
+        <input type="hidden" name="description" defaultValue={job?.description ?? ""} />
+        <input type="hidden" name="job_type" defaultValue={job?.job_type ?? ""} />
+        <input type="hidden" name="applied_at" defaultValue={formatDateInput(job?.applied_at)} />
+
+        <div className="card p-4">
+          <Label htmlFor="url">Job link</Label>
+          <Input
+            id="url"
+            name="url"
+            type="url"
+            defaultValue={job?.url ?? ""}
+            placeholder="https://…"
+          />
+          <p className="mt-1.5 text-[11px] text-muted">If the copied post includes an apply link, Extract fields will add it here automatically.</p>
+        </div>
 
         {/* ── Screenshot scanner ───────────────────────────── */}
-        <div className="card p-4">
+        <div
+          className="card p-4"
+          onPaste={handleImagePaste}
+          tabIndex={0}
+          aria-label="Screenshot upload area. Paste a copied image here."
+        >
           <div className="flex flex-wrap items-center gap-3">
             <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-line-2 bg-surface-2">
               <Icon name="sparkles" size={16} className="text-muted" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-medium">Fill from a screenshot</div>
+              <div className="text-[13px] font-medium">Add a post screenshot</div>
               <div className="text-[11px] text-muted">
-                Paste a Facebook / BDJobs post. AI extracts the fields; you confirm.
+                Take or upload a screenshot, or copy an image and paste it here. You can also paste post text below.
               </div>
             </div>
             <Button
@@ -195,7 +278,7 @@ export function JobForm({ job }: { job?: Job }) {
               disabled={scan.busy}
             >
               <Icon name="camera" size={14} />
-              {scan.busy ? "Scanning…" : "Choose image"}
+              {scan.busy ? "Reading…" : "Camera / gallery"}
             </Button>
             <input
               ref={fileRef}
@@ -209,6 +292,40 @@ export function JobForm({ job }: { job?: Job }) {
               }}
             />
           </div>
+
+          {imagePreview && (
+            <img
+              src={imagePreview}
+              alt="Screenshot being used to extract job details"
+              className="mt-3 max-h-56 w-full rounded-lg border border-line object-contain"
+            />
+          )}
+
+          <div className="mt-3 rounded-md border border-dashed border-line-2 px-3 py-2 text-center text-[11px] text-muted">
+            Copy an image, then tap/click this card and paste it here.
+          </div>
+
+          <label htmlFor="post-text" className="label mt-4">Or paste the job post text</label>
+          <textarea
+            id="post-text"
+            value={postText}
+            onChange={(event) => setPostText(event.target.value)}
+            onPaste={handlePostPaste}
+            rows={5}
+            className="input resize-y"
+            placeholder="Copy the post from Facebook, BDJobs, or another site and paste it here…"
+            disabled={scan.busy}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-2 w-full sm:w-auto"
+            onClick={() => void runTextParse()}
+            disabled={scan.busy || !postText.trim()}
+          >
+            <Icon name="sparkles" size={14} />
+            Extract fields
+          </Button>
 
           {scan.busy && typeof scan.progress === "number" && (
             <div className="mt-3">
@@ -289,25 +406,6 @@ export function JobForm({ job }: { job?: Job }) {
             </div>
 
             <div>
-              <Label htmlFor="job_type" field="job_type">
-                Type
-              </Label>
-              <select
-                id="job_type"
-                name="job_type"
-                defaultValue={job?.job_type ?? ""}
-                className="input"
-              >
-                <option value="">Not set</option>
-                {JOB_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
               <Label htmlFor="source" field="source">
                 Source
               </Label>
@@ -327,17 +425,6 @@ export function JobForm({ job }: { job?: Job }) {
             </div>
 
             <div>
-              <Label htmlFor="url">Job link</Label>
-              <Input
-                id="url"
-                name="url"
-                type="url"
-                defaultValue={job?.url ?? ""}
-                placeholder="https://bdjobs.com/…"
-              />
-            </div>
-
-            <div>
               <Label htmlFor="deadline" field="deadline">
                 Application deadline
               </Label>
@@ -346,17 +433,6 @@ export function JobForm({ job }: { job?: Job }) {
                 name="deadline"
                 type="date"
                 defaultValue={formatDateInput(job?.deadline)}
-                
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="applied_at">Applied on</Label>
-              <Input
-                id="applied_at"
-                name="applied_at"
-                type="date"
-                defaultValue={formatDateInput(job?.applied_at)}
                 
               />
             </div>
@@ -394,20 +470,6 @@ export function JobForm({ job }: { job?: Job }) {
             </div>
 
             <div className="sm:col-span-2">
-              <Label htmlFor="description" field="description">
-                Summary
-              </Label>
-              <textarea
-                id="description"
-                name="description"
-                defaultValue={job?.description ?? ""}
-                rows={3}
-                className="input resize-y"
-                placeholder="Short description of the role and requirements."
-              />
-            </div>
-
-            <div className="sm:col-span-2">
               <Label htmlFor="notes">Private notes</Label>
               <textarea
                 id="notes"
@@ -428,7 +490,7 @@ export function JobForm({ job }: { job?: Job }) {
         )}
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="submit" size="lg" disabled={pending}>
+          <Button type="submit" size="lg" disabled={pending || scan.busy}>
             {pending ? "Saving…" : job?.id ? "Save changes" : "Add job"}
           </Button>
           <Link
@@ -471,6 +533,7 @@ async function postParse(body: Record<string, unknown>): Promise<{
 
 function labelForEngine(engine: string): string {
   const [provider, mode] = engine.split(":");
+  if (engine === "offline:rules") return "offline rules";
   if (provider === "heuristic") return "offline parser";
   const names: Record<string, string> = {
     gemini: "Gemini",

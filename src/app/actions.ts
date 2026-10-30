@@ -1,10 +1,10 @@
 "use server";
 
+import { removeScreenshot, uploadFile } from "@/lib/storage";
+import { createClient, requireUser } from "@/lib/supabase/server";
+import type { Status } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient, requireUser } from "@/lib/supabase/server";
-import { uploadFile, removeScreenshot } from "@/lib/storage";
-import type { Status } from "@/lib/types";
 
 const STATUSES: Status[] = [
   "saved",
@@ -49,15 +49,20 @@ export async function saveJob(formData: FormData) {
     source: str(formData, "source"),
     url: str(formData, "url"),
     deadline: dateOrNull(str(formData, "deadline")),
-    applied_at: dateOrNull(str(formData, "applied_at")),
+    applied_at:
+      dateOrNull(str(formData, "applied_at")) ??
+      (status === "applied" ? new Date().toISOString().slice(0, 10) : null),
     status,
     priority: Math.min(5, Math.max(1, num(formData, "priority", 3))),
     description: str(formData, "description"),
     notes: str(formData, "notes"),
   };
 
-  if (!job.company && !job.title) {
-    return { error: "Give the job at least a title or a company name." };
+  if (job.url && !isHttpUrl(job.url)) {
+    return { error: "Enter a valid job link starting with https:// or http://." };
+  }
+  if (!job.url && !job.title && !job.company) {
+    return { error: "Add a job link, role, or company before saving." };
   }
 
   // Optional new screenshot file
@@ -243,4 +248,13 @@ function revalidateAll() {
   revalidatePath("/");
   revalidatePath("/jobs");
   revalidatePath("/board");
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }

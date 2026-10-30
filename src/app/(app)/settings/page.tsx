@@ -1,19 +1,21 @@
-import Link from "next/link";
+import { AiProviderKeys } from "@/components/AiProviderKeys";
 import { CopyField } from "@/components/CopyField";
 import { Icon } from "@/components/Icon";
 import { PageHeader, Section } from "@/components/Shell";
-import { requireUser } from "@/lib/supabase/server";
+import { getAiProviderKeyStatus, getAiProviderKeys, type AiProviderId } from "@/lib/aiKeyVault";
+import { BOARD_COLUMNS, STATUS_META } from "@/lib/constants";
 import {
-  APP_URL,
-  EXTENSION_TOKEN,
-  GEMINI_API_KEY,
-  GROQ_API_KEY,
-  OPENROUTER_API_KEY,
-  SUPABASE_SERVICE_KEY,
-  isSupabaseConfigured,
+    APP_URL,
+    EXTENSION_TOKEN,
+    GEMINI_API_KEY,
+    GROQ_API_KEY,
+    OPENROUTER_API_KEY,
+    SUPABASE_SERVICE_KEY,
+    isSupabaseConfigured,
 } from "@/lib/env";
 import { aiStatus } from "@/lib/extract";
-import { BOARD_COLUMNS, STATUS_META } from "@/lib/constants";
+import { requireUser } from "@/lib/supabase/server";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -36,12 +38,17 @@ export default async function SettingsPage() {
   const tokenIsSet =
     Boolean(EXTENSION_TOKEN) && EXTENSION_TOKEN !== "change-me-to-a-long-random-string";
 
-  const ai = aiStatus();
-  const providers = [
-    { id: "gemini", label: "Google Gemini", key: GEMINI_API_KEY },
-    { id: "openrouter", label: "OpenRouter", key: OPENROUTER_API_KEY },
-    { id: "groq", label: "Groq", key: GROQ_API_KEY },
+  const [keyStatus, savedKeys] = await Promise.all([
+    getAiProviderKeyStatus(user.id),
+    getAiProviderKeys(user.id),
+  ]);
+  const ai = aiStatus(savedKeys);
+  const providers: { id: AiProviderId; label: string; key: string }[] = [
+    { id: "gemini", label: "Google Gemini", key: GEMINI_API_KEY || savedKeys.gemini || "" },
+    { id: "openrouter", label: "OpenRouter", key: OPENROUTER_API_KEY || savedKeys.openrouter || "" },
+    { id: "groq", label: "Groq", key: GROQ_API_KEY || savedKeys.groq || "" },
   ];
+  const configuredProviderIds = providers.filter((provider) => provider.key.length > 10).map((provider) => provider.id);
 
   return (
     <div className="animate-in">
@@ -95,6 +102,20 @@ export default async function SettingsPage() {
         </Section>
 
         <div className="space-y-4">
+          <Section title="AI provider API keys">
+            {!keyStatus.available && (
+              <p className="mx-4 mt-4 rounded-lg border border-warn/25 bg-warn-soft px-3 py-2 text-[11.5px] leading-relaxed text-warn">
+                To save keys in this page, set <code className="mono">AI_KEYS_ENCRYPTION_KEY</code> to a random 64-character hex secret in your server environment, then restart/redeploy. Keys are encrypted before database storage.
+              </p>
+            )}
+            {keyStatus.available && !keyStatus.schemaReady && (
+              <p className="mx-4 mt-4 rounded-lg border border-warn/25 bg-warn-soft px-3 py-2 text-[11.5px] leading-relaxed text-warn">
+                Run <code className="mono">supabase/ai_provider_keys.sql</code> in Supabase SQL Editor to enable secure key storage.
+              </p>
+            )}
+            <AiProviderKeys configured={configuredProviderIds} saved={keyStatus.configured} />
+          </Section>
+
           <Section title="System checks">
             <div className="space-y-2.5 p-4">
               <Status ok={isSupabaseConfigured} label="Supabase connection" />
@@ -133,8 +154,8 @@ export default async function SettingsPage() {
             </div>
             <div className="border-t border-line px-4 py-2.5 text-[11px] leading-relaxed text-muted">
               {ai.primary === "offline"
-                ? "No AI provider — the offline regex parser is used. Add any free key (Gemini, OpenRouter or Groq) for much better extraction."
-                : `AI parsing is on (${ai.primary}). Providers are tried in order; the offline parser is the last resort.`}
+                ? "Local rules and mobile OCR run first. Add provider keys to enable AI only when a text post is incomplete, or vision AI when a screenshot has little readable text. Free-tier limits can still apply."
+                : `Local rules run first for clear text posts. If extraction is incomplete, configured providers are tried in order (${ai.primary} first); mobile screenshots use OCR before vision AI.`}
             </div>
           </Section>
 

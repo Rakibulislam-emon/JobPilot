@@ -1,11 +1,11 @@
-import Link from "next/link";
+import { Icon } from "@/components/Icon";
 import { EmptyState, PageHeader, Section, StatCard } from "@/components/Shell";
 import { StatusPill } from "@/components/StatusPill";
-import { Icon } from "@/components/Icon";
 import { STATUS_META, STATUS_ORDER } from "@/lib/constants";
-import { createClient, requireUser } from "@/lib/supabase/server";
 import { daysSince, daysUntil, relativeTime, truncate } from "@/lib/format";
+import { createClient, requireUser } from "@/lib/supabase/server";
 import type { Job, Status } from "@/lib/types";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -132,10 +132,8 @@ export default async function DashboardPage() {
             { t: "2 · Confirm", d: "AI fills the fields; you fix anything wrong." },
             { t: "3 · Track", d: "Move it through the board as you progress." },
           ].map((s) => (
-            <div key={s.t} className="card px-5 py-4">
-              <div className="mono text-[11px] text-muted-2">
-                {s.t}
-              </div>
+            <div key={s.t} className="card min-w-0 px-4 py-4 sm:px-5">
+              <div className="mono text-[11px] text-muted-2">{s.t}</div>
               <div className="mt-1.5 text-[13px] leading-relaxed text-muted">{s.d}</div>
             </div>
           ))}
@@ -145,7 +143,7 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="animate-in">
+    <div className="animate-in min-w-0">
       <PageHeader
         eyebrow="Overview"
         title="Dashboard"
@@ -153,23 +151,30 @@ export default async function DashboardPage() {
         action={{ href: "/jobs/new", label: "Add job" }}
       />
 
-      {/* Bento stat grid */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5 stagger">
+      {/* Bento stat grid: 1 → 2 → 3 → 5 */}
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3 xl:grid-cols-5 stagger">
         <StatCard label="In pipeline" value={active} hint={`${total} total tracked`} accent />
         <StatCard label="Applied" value={byStatus.applied ?? 0} hint="waiting for reply" />
         <StatCard label="OA / Interview" value={interviews} hint="in progress" />
-        <StatCard label="Offers" value={offers} hint={offers > 0 ? "🎉 congrats" : "keep going"} accent={offers > 0} />
-        <StatCard label="Response rate" value={`${responseRate}%`} hint={`${responded} of ${progressed} replied`} />
+        <StatCard
+          label="Offers"
+          value={offers}
+          hint={offers > 0 ? "🎉 congrats" : "keep going"}
+          accent={offers > 0}
+        />
+        <StatCard
+          label="Response rate"
+          value={`${responseRate}%`}
+          hint={`${responded} of ${progressed} replied`}
+        />
       </div>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
+      <div className="mt-4 grid min-w-0 gap-4 xl:grid-cols-3">
+        <div className="min-w-0 space-y-4 xl:col-span-2">
           {/* Needs attention */}
           <Section
             title="Needs attention"
-            right={
-              <span className="mono text-[11px] text-muted">{attention.length}</span>
-            }
+            right={<span className="mono text-[11px] text-muted">{attention.length}</span>}
           >
             {attention.length === 0 ? (
               <div className="px-4 py-10 text-center text-[12.5px] text-muted">
@@ -178,10 +183,10 @@ export default async function DashboardPage() {
             ) : (
               <ul className="divide-y divide-line">
                 {attention.slice(0, 6).map((a) => (
-                  <li key={a.job.id}>
+                  <li key={a.job.id} className="min-w-0">
                     <Link
                       href={`/jobs/${a.job.id}`}
-                      className="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-2/60"
+                      className="group flex flex-col gap-1.5 px-4 py-2.5 transition-colors hover:bg-surface-2/60 sm:flex-row sm:items-center sm:gap-3 md:px-5 md:py-3"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-[13px] font-medium text-fg">
@@ -192,14 +197,14 @@ export default async function DashboardPage() {
                         </div>
                       </div>
                       <span
-                        className={`pill shrink-0 border ${toneStyles[a.tone]}`}
+                        className={`pill inline-flex w-fit shrink-0 border ${toneStyles[a.tone]} sm:self-auto`}
                       >
                         {a.reason}
                       </span>
                       <Icon
                         name="external"
                         size={13}
-                        className="shrink-0 text-muted-2 opacity-0 transition group-hover:opacity-100"
+                        className="hidden shrink-0 text-muted-2 opacity-0 transition group-hover:opacity-100 sm:inline-block"
                       />
                     </Link>
                   </li>
@@ -219,7 +224,10 @@ export default async function DashboardPage() {
                 {activities.map((a) => {
                   const job = jobs.find((j) => j.id === a.job_id);
                   return (
-                    <li key={a.id} className="flex items-start gap-3 px-4 py-3">
+                    <li
+                      key={a.id}
+                      className="flex min-w-0 items-start gap-3 px-4 py-2.5 md:px-5 md:py-3"
+                    >
                       <div className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md bg-surface-2 text-muted">
                         <Icon
                           name={a.kind === "status" ? "columns" : a.kind === "note" ? "note" : "plus"}
@@ -263,7 +271,7 @@ export default async function DashboardPage() {
                       {job && (
                         <Link
                           href={`/jobs/${job.id}`}
-                          className="shrink-0 text-muted-2 transition hover:text-fg"
+                          className="shrink-0 p-1 text-muted-2 transition hover:text-fg"
                           aria-label="Open job"
                         >
                           <Icon name="external" size={13} />
@@ -277,15 +285,15 @@ export default async function DashboardPage() {
           </Section>
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           {/* Pipeline */}
           <Section title="Pipeline">
-            <div className="space-y-3 px-4 py-4">
+            <div className="space-y-3 px-4 py-3 md:px-5 md:py-4">
               {STATUS_ORDER.filter((s) => (byStatus[s] ?? 0) > 0).map((s) => (
-                <div key={s}>
-                  <div className="mb-1.5 flex items-center justify-between text-[12px]">
-                    <span className="text-muted">{STATUS_META[s].label}</span>
-                    <span className="mono text-fg">{byStatus[s]}</span>
+                <div key={s} className="min-w-0">
+                  <div className="mb-1.5 flex items-center justify-between gap-2 text-[12px]">
+                    <span className="truncate text-muted">{STATUS_META[s].label}</span>
+                    <span className="mono shrink-0 text-fg">{byStatus[s]}</span>
                   </div>
                   <div className="h-1 overflow-hidden rounded-full bg-surface-3">
                     <div
@@ -306,16 +314,16 @@ export default async function DashboardPage() {
           {/* Sources */}
           <Section title="Sources">
             {sourceEntries.length === 0 ? (
-              <div className="px-5 py-8 text-center text-[12px] text-muted-2">—</div>
+              <div className="px-5 py-6 text-center text-[12px] text-muted-2">—</div>
             ) : (
-              <div className="space-y-2.5 px-4 py-4">
+              <div className="space-y-2.5 px-4 py-3 md:px-5 md:py-4">
                 {sourceEntries.map(([source, count]) => (
                   <div
                     key={source}
-                    className="flex items-center justify-between text-[12.5px]"
+                    className="flex min-w-0 items-center justify-between gap-2 text-[12.5px]"
                   >
-                    <span className="capitalize text-muted">{source}</span>
-                    <span className="mono text-fg">{count}</span>
+                    <span className="min-w-0 truncate capitalize text-muted">{source}</span>
+                    <span className="mono shrink-0 text-fg">{count}</span>
                   </div>
                 ))}
               </div>
@@ -324,15 +332,15 @@ export default async function DashboardPage() {
 
           {/* Quick jump */}
           <Section title="Recent jobs">
-            <div className="space-y-0.5 p-1.5">
+            <div className="space-y-0.5 p-1.5 md:p-2">
               {jobs.slice(0, 5).map((j) => (
                 <Link
                   key={j.id}
                   href={`/jobs/${j.id}`}
-                  className="group flex items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors hover:bg-surface-2/60"
+                  className="group flex min-w-0 items-center gap-2.5 rounded-md px-2.5 py-1.5 transition-colors hover:bg-surface-2/60 md:py-2"
                 >
                   <StatusPill status={j.status} />
-                  <span className="truncate text-[12.5px] text-muted group-hover:text-fg">
+                  <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted group-hover:text-fg">
                     {j.company || j.title || "untitled"}
                   </span>
                 </Link>

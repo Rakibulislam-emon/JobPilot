@@ -1,15 +1,19 @@
-import { NextResponse } from "next/server";
-import { aiStatus } from "@/lib/extract";
+import { getAiProviderKeys } from "@/lib/aiKeyVault";
+import { getOwnerUserId } from "@/lib/apiAuth";
 import {
-  EXTENSION_TOKEN,
-  SUPABASE_SERVICE_KEY,
-  isSupabaseConfigured,
+    EXTENSION_TOKEN,
+    SUPABASE_SERVICE_KEY,
+    isSupabaseConfigured,
 } from "@/lib/env";
+import { aiStatus } from "@/lib/extract";
+import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const ai = aiStatus();
+  const ownerId = await getOwnerUserId();
+  const savedKeys = ownerId ? await getAiProviderKeys(ownerId) : {};
+  const ai = aiStatus(savedKeys);
   return NextResponse.json({
     ok: true,
     supabase: isSupabaseConfigured,

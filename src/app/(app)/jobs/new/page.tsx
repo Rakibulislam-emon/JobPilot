@@ -8,7 +8,7 @@ export default function NewJobPage() {
     <div className="animate-in">
       <PageHeader
         title="Add a job"
-        subtitle="Type it manually, or drop a screenshot and let the parser fill it in."
+        subtitle="Paste a post or add a screenshot. Job links and details are picked up when available; you can also fill them in later."
       />
       <div className="max-w-3xl">
         <JobForm />

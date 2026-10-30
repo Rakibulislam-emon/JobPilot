@@ -14,8 +14,8 @@ export function PageHeader({
   eyebrow?: string;
 }) {
   return (
-    <header className="mb-8 flex flex-wrap items-start justify-between gap-4 border-b border-line pb-6">
-      <div>
+    <header className="mb-6 flex min-w-0 flex-wrap items-start justify-between gap-3 border-b border-line pb-5 sm:mb-8 sm:gap-4 sm:pb-6">
+      <div className="min-w-0 flex-1">
         {eyebrow && (
           <div className="mb-2 text-[11px] font-medium text-muted-2">{eyebrow}</div>
         )}
@@ -27,7 +27,7 @@ export function PageHeader({
         )}
       </div>
       {action && (
-        <Link href={action.href} className="btn btn-primary">
+        <Link href={action.href} className="btn btn-primary shrink-0">
           <Icon name={action.icon ?? "plus"} size={14} />
           {action.label}
         </Link>
@@ -78,7 +78,7 @@ export function Section({
 }) {
   return (
     <section className={`card overflow-hidden ${className}`}>
-      <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
+      <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5">
         <h2 className="text-[12px] font-medium text-fg-2">{title}</h2>
         {right}
       </div>
@@ -101,11 +101,11 @@ export function StatCard({
   trend?: { value: string; positive: boolean };
 }) {
   return (
-    <div className="card card-hover p-4">
+    <div className="card card-hover min-w-0 p-3 sm:p-4">
       <div className="text-[12px] text-muted">{label}</div>
       <div className="mt-2 flex items-baseline gap-2">
         <span
-          className={`mono text-[26px] font-semibold leading-none tracking-tight ${
+          className={`mono min-w-0 text-[26px] font-semibold leading-none tracking-tight ${
             accent ? "text-accent" : "text-fg"
           }`}
         >
@@ -121,7 +121,7 @@ export function StatCard({
           </span>
         )}
       </div>
-      {hint && <div className="mt-1.5 text-[11.5px] text-muted-2">{hint}</div>}
+      {hint && <div className="mt-1.5 break-words text-[11.5px] text-muted-2">{hint}</div>}
     </div>
   );
 }

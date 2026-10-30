@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
 import { authorizeApi } from "@/lib/apiAuth";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { uploadScreenshot } from "@/lib/storage";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -41,14 +41,20 @@ export async function POST(req: Request) {
 
   const company = text(body.company, 120);
   const title = text(body.title, 160);
-  if (!company && !title) {
+  const url = text(body.url, 1000);
+  if (!company && !title && !url) {
     return NextResponse.json(
-      { error: "A company or job title is required." },
+      { error: "Add a job link, role, or company before saving." },
+      { status: 400 }
+    );
+  }
+  if (url && !isHttpUrl(url)) {
+    return NextResponse.json(
+      { error: "Job link must start with http:// or https://." },
       { status: 400 }
     );
   }
 
-  const url = text(body.url, 1000);
   const statusRaw = text(body.status, 20) || "saved";
   const status = ALLOWED_STATUS.includes(statusRaw) ? statusRaw : "saved";
   const admin = createAdminClient();
@@ -139,4 +145,13 @@ export async function POST(req: Request) {
     id: created.id,
     url: `/jobs/${created.id}`,
   });
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }

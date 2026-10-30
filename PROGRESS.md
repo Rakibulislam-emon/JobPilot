@@ -245,6 +245,36 @@ git push -u origin redesign/modern-ui
 
 ## 9. Session log
 
+### 2026-10-30 (session 5) — instant jobs filters (no Apply button)
+- new `src/components/JobsFilterBar.tsx` (client component):
+  - typing is debounced 300 ms → `router.replace()` with `scroll:false`, 6 keystrokes = 1 server request
+  - status / source / sort apply immediately on change; Reset clears everything
+  - Enter still submits, the form keeps `method="get" action="/jobs"` so it works without JS
+  - inputs stay in sync when the URL changes from outside (back/forward, dashboard links)
+  - small spinner in the search box while the RSC request is in flight
+  - any filter change drops `page`, so results always start at page 1
+- URL is clean now (`?q=test&status=rejected`, no empty params)
+- `src/app/(app)/jobs/page.tsx` renders `<JobsFilterBar>`; verified in browser (desktop + 390 px)
+  and `NEXT_DIST_DIR=.next-build npm run build` passes
+
+### 2026-10-30 (session 4) — jobs page search/filter hardening
+- **bug fix:** search returned 0 results for multi-word / punctuated queries
+  - cause: the whole query was used as one `ilike '%phrase%'` against a single column list,
+    so `Data Entry (Night Shift)` → `DataEntryNightShift` matched nothing
+  - fix: query is split into up to 5 words; words are AND-ed, columns are OR-ed
+    (`company`, `title`, `location`, `job_type`, `salary`, `notes`, `description`, `url`)
+  - search now also finds "remote", "internship", "15000" (job_type / salary) and description text
+- **bug fix:** `?page=N` beyond the last page made PostgREST return 416 (PGRST103) and the page
+  rendered "Could not load jobs" with no results — now a count query runs first and the page is
+  clamped/redirected (`/jobs?page=99` → 307 `/jobs?page=1`, filters kept)
+- **bug fix:** `/jobs?q=a&q=b` (duplicate query param → array) crashed the page with HTTP 500
+  — searchParams are normalised through `param()` (last value wins)
+- "(filtered)" label now only shows when a filter is actually applied
+- `PAGE_SIZE` constant replaces the inline 50; tsc + `NEXT_DIST_DIR=.next-build npm run build` pass
+- **gotcha confirmed:** two `next dev` processes were running (3000 + 3001) on the same `.next`
+  folder → intermittent `chunk 404` / `500` on client navigation (clicks silently doing nothing).
+  Run only ONE dev server; kill the extra one before filing UI bugs.
+
 ### 2026-10-29 (session 2) — Vercel-style black theme pass
 - palette -> pure black `#000`, neutral surfaces (`#0a0a0a`/`#111`/`#171717`), hairline borders, shadows removed
 - primary button is now white/inverted (`.btn-primary` + shadcn `Button`)

@@ -21,15 +21,20 @@ Manifest V3 extension for Chrome and Edge.
 
 ```
 active tab
-  ├─ scripting.executeScript  → url, title, og:*, innerText (12k chars)
-  ├─ tabs.captureVisibleTab   → screenshot → WebP 1400px @ 0.72
+  ├─ scripting.executeScript  → url, title, selected text only
+  ├─ tabs.captureVisibleTab   → local screenshot; popup closes for page-level area selection
+  ├─ user selects a page region, pastes post text, or combines both
   │
   ├─ POST /api/parse          → AI text (Gemini → OpenRouter → Groq, first that works)
   │                              → or AI vision for social/screenshot-heavy pages
   └─ POST /api/save           → job row + signed-storage screenshot
 ```
 
-Keyboard: **Alt+Shift+J** opens the same capture form.
+Keyboard: **Alt+Shift+J** opens the capture form. Choose **Select area on page** to
+close the popup and drag over the post; the form reopens with only that region. Or
+paste the complete post text, or use both inputs, then choose **Extract fields**.
+The whole-page screenshot stays local and only the selected crop or pasted text is
+sent for extraction (plus page URL/title). It does not submit the whole page image.
 Right-click anywhere → **Capture job post to JobDesk**.
 
 > Chrome rejects `Ctrl+Alt+<key>` in `suggested_key` (on Windows `Ctrl+Alt` is AltGr),

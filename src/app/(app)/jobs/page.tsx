@@ -1,13 +1,74 @@
-import Link from "next/link";
-import { Icon } from "@/components/Icon";
+import { JobsFilterBar } from "@/components/JobsFilterBar";
 import { PageHeader } from "@/components/Shell";
 import { StatusPill } from "@/components/StatusPill";
 import { SOURCES, STATUS_META, STATUS_ORDER } from "@/lib/constants";
-import { createClient, requireUser } from "@/lib/supabase/server";
 import { daysUntil, formatDate, relativeTime } from "@/lib/format";
+import { createClient, requireUser } from "@/lib/supabase/server";
 import type { Job } from "@/lib/types";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
+
+const PAGE_SIZE = 50;
+
+/** Columns the free-text search looks at. */
+const SEARCH_COLUMNS = [
+  "company",
+  "title",
+  "location",
+  "job_type",
+  "salary",
+  "notes",
+  "description",
+  "url",
+] as const;
+
+type FilterChain = {
+  eq(column: string, value: string): FilterChain;
+  or(filters: string): FilterChain;
+};
+
+/**
+ * Splits the search box into safe words. PostgREST syntax characters
+ * (`,`, `(`, `)`, `%`, `*`) can never reach the query string this way.
+ */
+function searchTokens(raw: string): string[] {
+  return raw
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean)
+    .slice(0, 5);
+}
+
+/**
+ * Owner scope + free-text search + dropdown filters.
+ * Words are AND-ed (all must match), columns are OR-ed (any column may match),
+ * so "Data Entry (Night Shift)" still finds the job.
+ */
+function applyFilters<T>(
+  query: T,
+  userId: string,
+  tokens: string[],
+  status: string,
+  source: string
+): T {
+  let next = query as unknown as FilterChain;
+  next = next.eq("user_id", userId);
+  for (const token of tokens) {
+    next = next.or(
+      SEARCH_COLUMNS.map((column) => `${column}.ilike.%${token}%`).join(",")
+    );
+  }
+  if (status) next = next.eq("status", status);
+  if (source) next = next.eq("source", source);
+  return next as unknown as T;
+}
+
+/** `?q=a&q=b` arrives as an array — keep the last value so the page never crashes. */
+function param(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) return value[value.length - 1] ?? "";
+  return value ?? "";
+}
 
 function DeadlineCell({ job }: { job: Job }) {
   if (!job.deadline) return <span className="text-muted/50">—</span>;
@@ -37,29 +98,54 @@ export default async function JobsPage({
   searchParams,
 }: {
   searchParams: Promise<{
-    q?: string;
-    status?: string;
-    source?: string;
-    sort?: string;
+    q?: string | string[];
+    status?: string | string[];
+    source?: string | string[];
+    sort?: string | string[];
+    page?: string | string[];
   }>;
 }) {
   const sp = await searchParams;
   const user = await requireUser();
   const supabase = await createClient();
 
-  const q = (sp.q ?? "").trim();
-  const status = sp.status && STATUS_ORDER.includes(sp.status as never) ? sp.status : "";
-  const source = sp.source ?? "";
-  const sort = sp.sort ?? "new";
+  const q = param(sp.q).trim().slice(0, 100);
+  const tokens = searchTokens(q);
+  const statusRaw = param(sp.status);
+  const sourceRaw = param(sp.source);
+  const sortRaw = param(sp.sort);
+  const pageRaw = param(sp.page);
 
-  let query = supabase.from("jobs").select("*").eq("user_id", user.id);
+  const status = STATUS_ORDER.includes(statusRaw as (typeof STATUS_ORDER)[number])
+    ? statusRaw
+    : "";
+  const source = SOURCES.some((item) => item.value === sourceRaw) ? sourceRaw : "";
+  const sort = ["new", "updated", "deadline", "company"].includes(sortRaw)
+    ? sortRaw
+    : "new";
+  const page = Math.max(1, Number.parseInt(pageRaw, 10) || 1);
+  const filters = { q, status, source, sort };
 
-  if (q) {
-    const safe = q.replace(/[%,()]/g, " ").trim();
-    query = query.or(`company.ilike.%${safe}%,title.ilike.%${safe}%,notes.ilike.%${safe}%`);
-  }
-  if (status) query = query.eq("status", status);
-  if (source) query = query.eq("source", source);
+  // Count first so a stale/out-of-range `page` can be clamped instead of
+  // making PostgREST return 416 ("Requested range not satisfiable").
+  const { count, error: countError } = await applyFilters(
+    supabase.from("jobs").select("id", { count: "exact", head: true }),
+    user.id,
+    tokens,
+    status,
+    source
+  );
+  const total = count ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (!countError && page > pageCount) redirect(jobsPageHref(filters, pageCount));
+
+  let query = applyFilters(
+    supabase.from("jobs").select("*"),
+    user.id,
+    tokens,
+    status,
+    source
+  );
 
   if (sort === "deadline") {
     query = query.order("deadline", { ascending: true, nullsFirst: false });
@@ -71,75 +157,31 @@ export default async function JobsPage({
     query = query.order("created_at", { ascending: false });
   }
 
-  const { data } = await query.limit(300);
+  const { data, error } = await query.range(
+    (page - 1) * PAGE_SIZE,
+    page * PAGE_SIZE - 1
+  );
   const jobs = (data ?? []) as Job[];
 
-  const hasFilters = Boolean(q || status || source || (sort && sort !== "new"));
+  const hasFilters = Boolean(tokens.length || status || source || sort !== "new");
 
   return (
     <div className="animate-in">
       <PageHeader
         title="Jobs"
-        subtitle={`${jobs.length} result${jobs.length === 1 ? "" : "s"}${
+        subtitle={`${total} result${total === 1 ? "" : "s"}${
           hasFilters ? " (filtered)" : ""
         }`}
         action={{ href: "/jobs/new", label: "Add job" }}
       />
 
-      <form
-        method="get"
-        className="card mb-4 flex flex-wrap items-end gap-2 p-3"
-      >
-        <div className="relative min-w-[180px] flex-1">
-          <Icon
-            name="search"
-            size={14}
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted"
-          />
-          <input
-            name="q"
-            defaultValue={q}
-            placeholder="Search company, role, notes…"
-            className="input pl-8"
-          />
+      <JobsFilterBar q={filters.q} status={filters.status} source={filters.source} sort={filters.sort} />
+
+      {error ? (
+        <div role="alert" className="rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger">
+          Could not load jobs. Please refresh and try again.
         </div>
-
-        <select name="status" defaultValue={status} className="input w-auto min-w-[140px]">
-          <option value="">All statuses</option>
-          {STATUS_ORDER.map((s) => (
-            <option key={s} value={s}>
-              {STATUS_META[s].label}
-            </option>
-          ))}
-        </select>
-
-        <select name="source" defaultValue={source} className="input w-auto min-w-[130px]">
-          <option value="">All sources</option>
-          {SOURCES.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </select>
-
-        <select name="sort" defaultValue={sort} className="input w-auto min-w-[130px]">
-          <option value="new">Newest first</option>
-          <option value="updated">Recently updated</option>
-          <option value="deadline">Deadline soon</option>
-          <option value="company">Company A–Z</option>
-        </select>
-
-        <button type="submit" className="btn btn-ghost">
-          Apply
-        </button>
-        {hasFilters && (
-          <Link href="/jobs" className="btn btn-ghost text-muted">
-            Reset
-          </Link>
-        )}
-      </form>
-
-      {jobs.length === 0 ? (
+      ) : jobs.length === 0 ? (
         <div className="flex flex-col items-center rounded-xl border border-dashed border-line-2 px-6 py-14 text-center">
           <p className="text-sm font-medium">No jobs match</p>
           <p className="mt-1 text-xs text-muted">
@@ -214,6 +256,40 @@ export default async function JobsPage({
           </ul>
         </div>
       )}
+
+      {!error && total > 0 && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[12px] text-muted">
+          <span>
+            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}
+          </span>
+          <nav aria-label="Jobs pages" className="flex items-center gap-2">
+            {page > 1 ? (
+              <Link href={jobsPageHref(filters, page - 1)} className="btn btn-ghost">Previous</Link>
+            ) : (
+              <span className="btn btn-ghost pointer-events-none opacity-40">Previous</span>
+            )}
+            <span className="mono">{page} / {pageCount}</span>
+            {page < pageCount ? (
+              <Link href={jobsPageHref(filters, page + 1)} className="btn btn-ghost">Next</Link>
+            ) : (
+              <span className="btn btn-ghost pointer-events-none opacity-40">Next</span>
+            )}
+          </nav>
+        </div>
+      )}
     </div>
   );
+}
+
+function jobsPageHref(
+  filters: { q?: string; status?: string; source?: string; sort?: string },
+  page: number
+): string {
+  const params = new URLSearchParams();
+  if (filters.q) params.set("q", filters.q);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.source) params.set("source", filters.source);
+  if (filters.sort && filters.sort !== "new") params.set("sort", filters.sort);
+  params.set("page", String(page));
+  return `/jobs?${params.toString()}`;
 }

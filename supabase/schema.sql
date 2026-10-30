@@ -87,7 +87,21 @@ create table if not exists public.attachments (
 );
 
 -- ------------------------------------------------------------
--- 5. Keep updated_at fresh
+-- 5. Encrypted AI provider credentials (service-role only)
+-- ------------------------------------------------------------
+create table if not exists public.ai_provider_keys (
+  user_id        uuid not null references auth.users (id) on delete cascade,
+  provider       text not null check (provider in ('gemini', 'openrouter', 'groq')),
+  encrypted_key  text not null,
+  updated_at     timestamptz not null default now(),
+  primary key (user_id, provider)
+);
+alter table public.ai_provider_keys enable row level security;
+revoke all on public.ai_provider_keys from anon, authenticated;
+grant all on public.ai_provider_keys to service_role;
+
+-- ------------------------------------------------------------
+-- 6. Keep updated_at fresh
 -- ------------------------------------------------------------
 create or replace function public.touch_updated_at()
 returns trigger language plpgsql as $$
@@ -103,12 +117,13 @@ create trigger jobs_touch_updated_at
   for each row execute function public.touch_updated_at();
 
 -- ------------------------------------------------------------
--- 6. Row Level Security — every row belongs to exactly one auth user
+-- 7. Row Level Security — every row belongs to exactly one auth user
 -- ------------------------------------------------------------
 alter table public.jobs        enable row level security;
 alter table public.activities  enable row level security;
 alter table public.contacts    enable row level security;
 alter table public.attachments enable row level security;
+alter table public.ai_provider_keys enable row level security;
 
 drop policy if exists "own jobs"        on public.jobs;
 drop policy if exists "own activities"  on public.activities;
@@ -128,14 +143,14 @@ create policy "own attachments" on public.attachments
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ------------------------------------------------------------
--- 7. Screenshot storage bucket (private; served via signed URLs)
+-- 8. Screenshot storage bucket (private; served via signed URLs)
 -- ------------------------------------------------------------
 insert into storage.buckets (id, name, public)
 values ('shots', 'shots', false)
 on conflict (id) do nothing;
 
 -- ------------------------------------------------------------
--- 8. Convenience view for the dashboard
+-- 9. Convenience view for the dashboard
 -- ------------------------------------------------------------
 create or replace view public.job_overview
 with (security_invoker = true) as

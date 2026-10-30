@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { getAiProviderKeys } from "@/lib/aiKeyVault";
 import { authorizeApi } from "@/lib/apiAuth";
 import { parseJob } from "@/lib/extract";
+import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -38,12 +39,13 @@ export async function POST(req: Request) {
   }
 
   try {
+    const savedKeys = await getAiProviderKeys(auth.userId);
     const result = await parseJob({
       url: body.url,
       title: body.title,
       text: body.text,
       image,
-    });
+    }, savedKeys);
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Parser crashed.";

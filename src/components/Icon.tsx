@@ -17,7 +17,9 @@ type IconName =
   | "camera"
   | "note"
   | "clock"
-  | "download";
+  | "download"
+  | "menu"
+  | "close";
 
 const PATHS: Record<IconName, string> = {
   grid: "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z",
@@ -43,6 +45,8 @@ const PATHS: Record<IconName, string> = {
   note: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M9 13h6M9 17h4",
   clock: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2",
   download: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3",
+  menu: "M3 12h18M3 6h18M3 18h18",
+  close: "M18 6 6 18M6 6l12 12",
 };
 
 export function Icon({

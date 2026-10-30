@@ -29,6 +29,7 @@ const state = {
   tabId: null,
   info: null,
   shot: null,
+  captureMode: "manual",
   draft: null,
   engine: "",
   warning: "",
@@ -77,6 +78,8 @@ async function init() {
 
   const params = new URLSearchParams(location.search);
   const tabIdParam = params.get("tabId");
+  const captureMode = params.get("capture");
+  let areaCaptureError = "";
 
   try {
     if (tabIdParam) {
@@ -94,54 +97,73 @@ async function init() {
     return;
   }
 
-  $("loading-text").textContent = "Reading this page…";
-
-  try {
-    const [result] = await chrome.scripting.executeScript({
-      target: { tabId: state.tabId },
-      func: pageScraper,
-    });
-    state.info = result && result.result ? result.result : null;
-  } catch {
-    state.info = null;
+  if (captureMode === "area") {
+    const { pendingAreaCapture } = await chrome.storage.local.get("pendingAreaCapture");
+    await chrome.storage.local.remove("pendingAreaCapture");
+    if (pendingAreaCapture && pendingAreaCapture.tabId === state.tabId) {
+      state.info = pendingAreaCapture.info;
+      try {
+        state.shot = await cropSelectedArea(
+          pendingAreaCapture.screenshot,
+          pendingAreaCapture.selection,
+          pendingAreaCapture.viewport
+        );
+      } catch (error) {
+        areaCaptureError = `Could not crop the selected area: ${error.message}`;
+      }
+    } else {
+      areaCaptureError = "The selected area image was not found. Please select the area again.";
+    }
+  } else {
+    $("loading-text").textContent = "Preparing capture options…";
+    try {
+      const [result] = await chrome.scripting.executeScript({
+        target: { tabId: state.tabId },
+        func: pageScraper,
+      });
+      state.info = result && result.result ? result.result : null;
+    } catch {
+      state.info = null;
+    }
   }
 
-  $("loading-text").textContent = "Taking a screenshot…";
-  state.shot = await captureTab(state.tabId);
-
-  if (state.shot) {
-    $("shot").src = state.shot;
-    $("shot").hidden = false;
-  }
-
-  // Prefill what we already know before the AI call returns.
-  if (state.info) {
-    $("f-title").value = cleanTitle(state.info.title || "");
-  }
+  // Only prefill source metadata; post text is always entered by the user.
   if (state.info && state.info.url) {
     const guess = guessSource(state.info.url);
     if (guess) $("f-source").value = guess;
   }
 
+  $("f-post-text").value = "";
   view("form");
-  $("engine").textContent = "analyzing";
-  await runParse();
+  $("engine").textContent = state.shot ? "area selected" : "choose input";
+  if (state.shot) {
+    $("shot").src = state.shot;
+    $("shot").hidden = false;
+    setNotice("Selected image ready. Click Extract fields, paste text, or use both together.", "");
+  } else if (areaCaptureError) {
+    setNotice(areaCaptureError, "err");
+  } else if (!state.info?.text) {
+    setNotice("Select an area on the page or paste the job post text to continue.", "warn");
+  }
 }
 
 async function runParse() {
+  const postText = $("f-post-text").value.trim();
   const body = {
     url: state.info ? state.info.url : "",
     title: state.info ? state.info.title : "",
-    text: state.info ? state.info.text : "",
+    text: postText,
   };
   if (state.shot) body.image = state.shot;
 
-  if (!body.text && !body.image && !body.url) {
+  if (!body.text && !body.image) {
     $("engine").textContent = "manual";
-    setNotice("Nothing could be read from this page. Fill the fields manually.", "warn");
+    setNotice("Select an area or paste the job post text before extracting.", "warn");
     return;
   }
 
+  $("engine").textContent = "analyzing";
+  setNotice("Extracting job details…", "");
   try {
     const res = await fetch(`${state.serverUrl}/api/parse`, {
       method: "POST",
@@ -151,35 +173,142 @@ async function runParse() {
       },
       body: JSON.stringify(body),
     });
-
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
-
     state.draft = json.draft;
     state.engine = json.engine;
     state.warning = json.warning || "";
-
     applyDraft(json.draft);
     $("engine").textContent = engineLabel(json.engine);
-
-    if (json.warning) {
-      setNotice(json.warning, "warn");
-    } else {
+    if (json.warning) setNotice(json.warning, "warn");
+    else if (countLow(json.draft.confidence) > 0) {
       const low = countLow(json.draft.confidence);
-      if (low > 0) {
-        setNotice(
-          `${low} field${low > 1 ? "s" : ""} may be inaccurate (amber). Double-check before saving.`,
-          "warn"
-        );
-      }
-    }
-  } catch (err) {
+      setNotice(`${low} field${low > 1 ? "s" : ""} may be inaccurate (amber). Double-check before saving.`, "warn");
+    } else setNotice("Fields extracted. Review them before saving.", "");
+  } catch (error) {
     $("engine").textContent = "manual";
-    setNotice(
-      `AI parsing failed: ${err.message}. You can still fill the fields manually.`,
-      "err"
-    );
+    setNotice(`AI parsing failed: ${error.message}. You can still fill the fields manually.`, "err");
   }
+}
+
+async function startAreaCapture() {
+  if (!state.tabId || !state.info) {
+    setNotice("Area selection is unavailable on this page. Paste the post text instead.", "warn");
+    return;
+  }
+  $("btn-select-area").disabled = true;
+  $("btn-select-area").textContent = "Starting…";
+  try {
+    const tab = await chrome.tabs.get(state.tabId);
+    const rawScreenshot = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
+    const screenshot = await shrink(rawScreenshot, 2000, 0.9);
+    await chrome.storage.local.set({
+      pendingAreaCapture: { tabId: state.tabId, info: state.info, screenshot, createdAt: Date.now() },
+    });
+    await chrome.scripting.executeScript({
+      target: { tabId: state.tabId },
+      func: startPageAreaSelection,
+      args: [state.tabId],
+    });
+    window.close();
+  } catch (error) {
+    await chrome.storage.local.remove("pendingAreaCapture");
+    $("btn-select-area").disabled = false;
+    $("btn-select-area").textContent = "Select area on page";
+    setNotice(`Could not start area selection: ${error.message}. Paste the post text instead.`, "err");
+  }
+}
+
+function startPageAreaSelection(tabId) {
+  const previousOverflow = document.documentElement.style.overflow;
+  const overlay = document.createElement("div");
+  overlay.id = "jobdesk-area-selector";
+  overlay.style.cssText = "position:fixed;inset:0;z-index:2147483647;cursor:crosshair;touch-action:none;user-select:none;background:rgba(0,0,0,.18);";
+  const hint = document.createElement("div");
+  hint.textContent = "Drag to select the job post · Esc to cancel";
+  hint.style.cssText = "position:fixed;top:16px;left:50%;transform:translateX(-50%);padding:10px 14px;border:1px solid #14b8a6;border-radius:8px;background:#07110f;color:#e8edf2;font:600 13px/1.3 system-ui,sans-serif;box-shadow:0 4px 24px #0008;white-space:nowrap;pointer-events:none;";
+  const box = document.createElement("div");
+  box.style.cssText = "position:fixed;border:2px solid #14b8a6;background:rgba(20,184,166,.12);display:none;pointer-events:none;";
+  overlay.append(hint, box);
+  document.documentElement.appendChild(overlay);
+  document.documentElement.style.overflow = "hidden";
+
+  let start = null;
+  const cleanup = () => {
+    document.documentElement.style.overflow = previousOverflow;
+    overlay.remove();
+    document.removeEventListener("keydown", onKey, true);
+  };
+  const onKey = (event) => {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    cleanup();
+    chrome.runtime.sendMessage({ type: "jobdesk-area-cancelled", tabId }).catch(() => {});
+  };
+  document.addEventListener("keydown", onKey, true);
+  overlay.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    start = { x: event.clientX, y: event.clientY };
+    box.style.display = "block";
+    box.style.left = `${start.x}px`;
+    box.style.top = `${start.y}px`;
+    box.style.width = "0";
+    box.style.height = "0";
+    overlay.setPointerCapture(event.pointerId);
+  });
+  overlay.addEventListener("pointermove", (event) => {
+    if (!start) return;
+    box.style.left = `${Math.min(start.x, event.clientX)}px`;
+    box.style.top = `${Math.min(start.y, event.clientY)}px`;
+    box.style.width = `${Math.abs(event.clientX - start.x)}px`;
+    box.style.height = `${Math.abs(event.clientY - start.y)}px`;
+  });
+  overlay.addEventListener("pointerup", (event) => {
+    if (!start) return;
+    const selection = {
+      x: Math.min(start.x, event.clientX),
+      y: Math.min(start.y, event.clientY),
+      width: Math.abs(event.clientX - start.x),
+      height: Math.abs(event.clientY - start.y),
+    };
+    start = null;
+    if (selection.width < 24 || selection.height < 24) return;
+    const viewport = { width: window.innerWidth, height: window.innerHeight };
+    cleanup();
+    chrome.runtime.sendMessage({
+      type: "jobdesk-area-selected",
+      tabId,
+      selection,
+      viewport,
+    }).then((response) => {
+      if (!response?.ok) console.error("JobDesk could not reopen after area selection");
+    }).catch((error) => console.error("JobDesk area selection failed", error));
+  });
+}
+
+async function cropSelectedArea(dataUrl, selection, viewport) {
+  if (!dataUrl || !selection || !viewport?.width || !viewport?.height) throw new Error("Selection data is missing");
+  const image = await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Screenshot could not be loaded"));
+    img.src = dataUrl;
+  });
+  const scaleX = image.width / viewport.width;
+  const scaleY = image.height / viewport.height;
+  const sx = Math.max(0, Math.round(selection.x * scaleX));
+  const sy = Math.max(0, Math.round(selection.y * scaleY));
+  const sw = Math.min(image.width - sx, Math.round(selection.width * scaleX));
+  const sh = Math.min(image.height - sy, Math.round(selection.height * scaleY));
+  if (sw < 1 || sh < 1) throw new Error("Selected area is empty");
+  const canvas = document.createElement("canvas");
+  canvas.width = sw;
+  canvas.height = sh;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Canvas is unavailable");
+  context.drawImage(image, sx, sy, sw, sh, 0, 0, sw, sh);
+  return shrink(canvas.toDataURL("image/png"), 1800, 0.88);
 }
 
 function applyDraft(draft) {
@@ -201,7 +330,6 @@ function applyDraft(draft) {
 function setVal(id, value) {
   const el = $(id);
   if (!el || !value) return;
-  if (el.value && el.value.trim()) return;
   el.value = value;
 }
 
@@ -313,26 +441,12 @@ function pageScraper() {
     );
     return el ? el.getAttribute("content") || "" : "";
   };
-  const body = document.body ? document.body.innerText || "" : "";
   return {
     url: location.href,
     title: meta("og:title") || document.title || "",
     description: meta("og:description") || meta("description") || "",
     image: meta("og:image") || meta("og:image:secure_url") || "",
-    text: body.replace(/\n{3,}/g, "\n\n").slice(0, 12000),
   };
-}
-
-async function captureTab(tabId) {
-  try {
-    const tab = await chrome.tabs.get(tabId);
-    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
-      format: "png",
-    });
-    return await shrink(dataUrl, 1400, 0.72);
-  } catch {
-    return null;
-  }
 }
 
 function shrink(dataUrl, maxWidth, quality) {
@@ -354,13 +468,6 @@ function shrink(dataUrl, maxWidth, quality) {
   });
 }
 
-function cleanTitle(title) {
-  return (title || "")
-    .replace(/\s*[|\-–—]\s*(bdjobs\.com|linkedin|facebook|job circular)\s*$/i, "")
-    .trim()
-    .slice(0, 160);
-}
-
 function guessSource(url) {
   const u = url.toLowerCase();
   if (u.includes("bdjobs")) return "bdjobs";
@@ -371,6 +478,7 @@ function guessSource(url) {
 
 function engineLabel(engine) {
   const [provider, mode] = String(engine || "").split(":");
+  if (engine === "offline:rules") return "offline rules";
   if (provider === "heuristic") return "offline";
   const names = { gemini: "gemini", openrouter: "openrouter", groq: "groq" };
   const name = names[provider] || provider;
@@ -381,6 +489,13 @@ function engineLabel(engine) {
 
 $("open-options").addEventListener("click", () => chrome.runtime.openOptionsPage());
 $("btn-save").addEventListener("click", save);
+$("btn-select-area").addEventListener("click", startAreaCapture);
+$("btn-parse-text").addEventListener("click", runParse);
+$("f-post-text").addEventListener("input", () => {
+  if ($("f-post-text").value.trim()) {
+    state.captureMode = "text";
+  }
+});
 $("btn-open").addEventListener("click", () =>
   chrome.tabs.create({ url: `${state.serverUrl}/jobs` })
 );
