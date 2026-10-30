@@ -1,10 +1,10 @@
 import { Icon } from "@/components/Icon";
-import { EmptyState, PageHeader, Section, StatCard } from "@/components/Shell";
+import { EmptyState, PageHeader, Section } from "@/components/Shell";
 import { StatusPill } from "@/components/StatusPill";
-import { STATUS_META, STATUS_ORDER } from "@/lib/constants";
-import { daysSince, daysUntil, relativeTime, truncate } from "@/lib/format";
+import { STATUS_ORDER } from "@/lib/constants";
+import { daysSince, daysUntil, relativeTime } from "@/lib/format";
 import { createClient, requireUser } from "@/lib/supabase/server";
-import type { Job, Status } from "@/lib/types";
+import type { Job } from "@/lib/types";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -111,6 +111,34 @@ export default async function DashboardPage() {
   const sourceEntries = Object.entries(bySource).sort((a, b) => b[1] - a[1]);
 
   const maxStatus = Math.max(1, ...Object.values(byStatus));
+  const today = new Date();
+  const activitySeries = Array.from({ length: 30 }, (_, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() - (29 - index));
+    const key = date.toISOString().slice(0, 10);
+    return {
+      key,
+      label: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      count: jobs.filter((job) => job.created_at.slice(0, 10) === key).length,
+    };
+  });
+  const greeting =
+    today.getHours() < 12 ? "Good morning" : today.getHours() < 18 ? "Good afternoon" : "Good evening";
+  const firstName = user.email?.split("@")[0] || "there";
+  const statusBreakdown = [
+    { label: "Active", count: (byStatus.saved ?? 0) + (byStatus.applied ?? 0), color: "#ededed" },
+    { label: "Interview stage", count: interviews, color: "#a3a3a3" },
+    { label: "Offers", count: offers, color: "#14b8a6" },
+    { label: "Rejected", count: byStatus.rejected ?? 0, color: "#525252" },
+    { label: "Other", count: (byStatus.ghosted ?? 0) + (byStatus.withdrawn ?? 0), color: "#303030" },
+  ].filter((item) => item.count > 0);
+  let donutPosition = 0;
+  const donutGradient = statusBreakdown.map((item) => {
+    const start = donutPosition;
+    donutPosition += total ? (item.count / total) * 100 : 0;
+    return `${item.color} ${start}% ${donutPosition}%`;
+  }).join(", ");
+  const topSource = sourceEntries[0];
 
   if (total === 0) {
     return (
@@ -144,68 +172,116 @@ export default async function DashboardPage() {
 
   return (
     <div className="animate-in min-w-0">
-      <PageHeader
-        eyebrow="Overview"
-        title="Dashboard"
-        subtitle={`${total} job${total === 1 ? "" : "s"} tracked · ${thisWeek} added this week`}
-        action={{ href: "/jobs/new", label: "Add job" }}
-      />
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-line pb-5 sm:mb-8 sm:pb-6">
+        <div className="min-w-0">
+          <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-2">Your workspace</div>
+          <h1 className="display text-[26px] text-fg md:text-[32px]">{greeting}, {firstName}</h1>
+          <p className="mt-1.5 text-[12px] text-muted">
+            {today.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" })}
+            <span className="mx-2 text-line-3">·</span>
+            {total} tracked · {thisWeek} added this week
+          </p>
+        </div>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <form action="/jobs" method="get" className="relative min-w-0 flex-1 sm:w-64 sm:flex-none lg:w-72">
+            <Icon name="search" size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+            <input name="q" placeholder="Search applications…" aria-label="Search applications" className="input pl-9 pr-3" />
+          </form>
+          <Link href="/jobs/new" className="btn btn-primary w-full sm:w-auto">
+            <Icon name="plus" size={14} /> Add job
+          </Link>
+        </div>
+      </header>
 
-      {/* Bento stat grid: 1 → 2 → 3 → 5 */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3 xl:grid-cols-5 stagger">
-        <StatCard label="In pipeline" value={active} hint={`${total} total tracked`} accent />
-        <StatCard label="Applied" value={byStatus.applied ?? 0} hint="waiting for reply" />
-        <StatCard label="OA / Interview" value={interviews} hint="in progress" />
-        <StatCard
-          label="Offers"
-          value={offers}
-          hint={offers > 0 ? "🎉 congrats" : "keep going"}
-          accent={offers > 0}
-        />
-        <StatCard
-          label="Response rate"
-          value={`${responseRate}%`}
-          hint={`${responded} of ${progressed} replied`}
-        />
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6 stagger">
+        <DashboardStat label="Total" value={total} icon="briefcase" href="/jobs" />
+        <DashboardStat label="Active" value={active} icon="activity" href="/jobs" />
+        <DashboardStat label="Interviews" value={interviews} icon="calendar" href="/jobs?status=interview" />
+        <DashboardStat label="Offers" value={offers} icon="gift" href="/jobs?status=offer" />
+        <DashboardStat label="Rejected" value={byStatus.rejected ?? 0} icon="ban" href="/jobs?status=rejected" />
+        <DashboardStat label="Response" value={`${responseRate}%`} icon="trend" hint={`${responded} / ${progressed}`} href="/jobs" />
       </div>
 
       <div className="mt-4 grid min-w-0 gap-4 xl:grid-cols-3">
         <div className="min-w-0 space-y-4 xl:col-span-2">
-          {/* Needs attention */}
-          <Section
-            title="Needs attention"
-            right={<span className="mono text-[11px] text-muted">{attention.length}</span>}
-          >
-            {attention.length === 0 ? (
-              <div className="px-4 py-10 text-center text-[12.5px] text-muted">
-                Nothing urgent. Nice work.
+          <section className="card overflow-hidden">
+            <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
+              <div>
+                <h2 className="text-[13px] font-medium text-fg">Application activity</h2>
+                <p className="mt-0.5 text-[11px] text-muted">Jobs added · last 30 days</p>
               </div>
+              <span className="pill border-line-2 bg-transparent text-muted">30 days</span>
+            </div>
+            <div className="px-3 pb-3 pt-4 sm:px-5">
+              <ActivityChart series={activitySeries} />
+            </div>
+          </section>
+
+          <Section
+            title="Recent applications"
+            right={<Link href="/jobs" className="text-[11px] text-muted transition hover:text-fg">View all <span aria-hidden="true">→</span></Link>}
+          >
+            {jobs.length === 0 ? (
+              <div className="px-4 py-8 text-center text-[12px] text-muted">No applications yet.</div>
+            ) : (
+              <div className="divide-y divide-line">
+                {jobs.slice(0, 5).map((job) => (
+                  <Link key={job.id} href={`/jobs/${job.id}`} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition hover:bg-surface-2/50 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_auto_auto] sm:px-5">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-line-2 bg-surface-2 text-[10px] font-semibold text-fg-2">{initials(job.company || job.title)}</span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-[12px] font-medium text-fg">{job.company || "Company not set"}</span>
+                        <span className="block truncate text-[10.5px] text-muted sm:hidden">{job.title || "Role not set"}</span>
+                      </span>
+                    </div>
+                    <span className="hidden truncate text-[11.5px] text-muted sm:block">{job.title || "Role not set"}</span>
+                    <StatusPill status={job.status} />
+                    <span className="hidden text-right text-[10.5px] text-muted sm:block">{relativeTime(job.created_at)}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </Section>
+        </div>
+
+        <div className="min-w-0 space-y-4">
+          <Section title="Application status">
+            <div className="p-4 sm:p-5">
+              <div className="flex flex-col items-center gap-5 sm:flex-row xl:flex-col 2xl:flex-row">
+                <div role="img" aria-label={`Application status: ${statusBreakdown.map((x) => `${x.label} ${x.count}`).join(", ")}`} className="grid h-36 w-36 shrink-0 place-items-center rounded-full" style={{ background: donutGradient ? `conic-gradient(${donutGradient})` : "var(--color-surface-3)" }}>
+                  <div className="grid h-25.5 w-25.5 place-content-center rounded-full border border-line bg-surface text-center">
+                    <span className="mono text-[22px] font-semibold leading-none text-fg">{total}</span>
+                    <span className="mt-1 text-[10px] text-muted">Total</span>
+                  </div>
+                </div>
+                <ul className="w-full min-w-0 space-y-2">
+                  {statusBreakdown.map((item) => (
+                    <li key={item.label} className="flex items-center gap-2 text-[11px]">
+                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+                      <span className="min-w-0 flex-1 truncate text-muted">{item.label}</span>
+                      <span className="mono shrink-0 text-fg">{item.count}<span className="ml-1 text-muted">({total ? Math.round((item.count / total) * 100) : 0}%)</span></span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </Section>
+
+          <Section title="Needs attention" right={<span className="mono text-[11px] text-muted">{attention.length}</span>}>
+            {attention.length === 0 ? (
+              <div className="px-4 py-8 text-center text-[12px] text-muted">Nothing urgent. Nice work.</div>
             ) : (
               <ul className="divide-y divide-line">
-                {attention.slice(0, 6).map((a) => (
-                  <li key={a.job.id} className="min-w-0">
-                    <Link
-                      href={`/jobs/${a.job.id}`}
-                      className="group flex flex-col gap-1.5 px-4 py-2.5 transition-colors hover:bg-surface-2/60 sm:flex-row sm:items-center sm:gap-3 md:px-5 md:py-3"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-[13px] font-medium text-fg">
-                          {a.job.title || "(untitled role)"}
-                        </div>
-                        <div className="truncate text-[12px] text-muted">
-                          {a.job.company || "Unknown company"}
-                        </div>
-                      </div>
-                      <span
-                        className={`pill inline-flex w-fit shrink-0 border ${toneStyles[a.tone]} sm:self-auto`}
-                      >
-                        {a.reason}
+                {attention.slice(0, 4).map((item) => (
+                  <li key={item.job.id}>
+                    <Link href={`/jobs/${item.job.id}`} className="flex items-start gap-2.5 px-4 py-3 transition hover:bg-surface-2/50">
+                      <span className={`mt-1 grid h-6 w-6 shrink-0 place-items-center rounded-full border ${toneStyles[item.tone]}`}>
+                        <Icon name={item.tone === "danger" ? "ban" : item.tone === "warn" ? "calendar" : "clock"} size={12} />
                       </span>
-                      <Icon
-                        name="external"
-                        size={13}
-                        className="hidden shrink-0 text-muted-2 opacity-0 transition group-hover:opacity-100 sm:inline-block"
-                      />
+                      <span className="min-w-0">
+                        <span className="block truncate text-[11.5px] font-medium text-fg">{item.job.title || item.job.company || "Untitled job"}</span>
+                        <span className="mt-0.5 block text-[10.5px] text-muted">{item.reason}</span>
+                      </span>
                     </Link>
                   </li>
                 ))}
@@ -213,142 +289,98 @@ export default async function DashboardPage() {
             )}
           </Section>
 
-          {/* Recent activity */}
-          <Section title="Recent activity">
-            {activities.length === 0 ? (
-              <div className="px-4 py-10 text-center text-[12.5px] text-muted">
-                No activity yet.
+          <Section title="Your snapshot">
+            <div className="space-y-3 px-4 py-4">
+              <div className="flex items-center gap-3">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-line-2 bg-surface-2 text-accent"><Icon name="trend" size={15} /></span>
+                <p className="text-[11.5px] leading-relaxed text-muted"><span className="text-fg">{responseRate}% response rate</span> across {progressed} progressed application{progressed === 1 ? "" : "s"}.</p>
               </div>
-            ) : (
-              <ul className="divide-y divide-line">
-                {activities.map((a) => {
-                  const job = jobs.find((j) => j.id === a.job_id);
-                  return (
-                    <li
-                      key={a.id}
-                      className="flex min-w-0 items-start gap-3 px-4 py-2.5 md:px-5 md:py-3"
-                    >
-                      <div className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md bg-surface-2 text-muted">
-                        <Icon
-                          name={a.kind === "status" ? "columns" : a.kind === "note" ? "note" : "plus"}
-                          size={12}
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[13px] leading-relaxed">
-                          {a.kind === "status" ? (
-                            <>
-                              Moved{" "}
-                              <span className="font-medium text-fg">
-                                {truncate(job?.company || job?.title || "job", 40)}
-                              </span>{" "}
-                              to{" "}
-                              <span className="font-medium text-fg">
-                                {STATUS_META[(a.to_status as Status) ?? "saved"]?.label}
-                              </span>
-                            </>
-                          ) : a.kind === "note" ? (
-                            <>
-                              Note on{" "}
-                              <span className="font-medium text-fg">
-                                {truncate(job?.company || job?.title || "job", 40)}
-                              </span>
-                              : “{truncate(a.note, 48)}”
-                            </>
-                          ) : (
-                            <>
-                              Added{" "}
-                              <span className="font-medium text-fg">
-                                {truncate(job?.company || job?.title || "a job", 40)}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                        <div className="mt-0.5 text-[11px] text-muted-2">
-                          {relativeTime(a.happened_at)}
-                        </div>
-                      </div>
-                      {job && (
-                        <Link
-                          href={`/jobs/${job.id}`}
-                          className="shrink-0 p-1 text-muted-2 transition hover:text-fg"
-                          aria-label="Open job"
-                        >
-                          <Icon name="external" size={13} />
-                        </Link>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </Section>
-        </div>
-
-        <div className="min-w-0 space-y-4">
-          {/* Pipeline */}
-          <Section title="Pipeline">
-            <div className="space-y-3 px-4 py-3 md:px-5 md:py-4">
-              {STATUS_ORDER.filter((s) => (byStatus[s] ?? 0) > 0).map((s) => (
-                <div key={s} className="min-w-0">
-                  <div className="mb-1.5 flex items-center justify-between gap-2 text-[12px]">
-                    <span className="truncate text-muted">{STATUS_META[s].label}</span>
-                    <span className="mono shrink-0 text-fg">{byStatus[s]}</span>
-                  </div>
-                  <div className="h-1 overflow-hidden rounded-full bg-surface-3">
-                    <div
-                      className={`h-full rounded-full ${STATUS_META[s].bar}`}
-                      style={{
-                        width: `${Math.max(4, (byStatus[s] / maxStatus) * 100)}%`,
-                      }}
-                    />
-                  </div>
+              {topSource && (
+                <div className="flex items-center gap-3 border-t border-line pt-3">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-line-2 bg-surface-2 text-muted"><Icon name="briefcase" size={15} /></span>
+                  <p className="text-[11.5px] leading-relaxed text-muted">Most tracked source: <span className="capitalize text-fg">{topSource[0]}</span> · {topSource[1]} job{topSource[1] === 1 ? "" : "s"}.</p>
                 </div>
-              ))}
-              {STATUS_ORDER.every((s) => (byStatus[s] ?? 0) === 0) && (
-                <div className="text-center text-[12px] text-muted-2">No jobs yet</div>
               )}
-            </div>
-          </Section>
-
-          {/* Sources */}
-          <Section title="Sources">
-            {sourceEntries.length === 0 ? (
-              <div className="px-5 py-6 text-center text-[12px] text-muted-2">—</div>
-            ) : (
-              <div className="space-y-2.5 px-4 py-3 md:px-5 md:py-4">
-                {sourceEntries.map(([source, count]) => (
-                  <div
-                    key={source}
-                    className="flex min-w-0 items-center justify-between gap-2 text-[12.5px]"
-                  >
-                    <span className="min-w-0 truncate capitalize text-muted">{source}</span>
-                    <span className="mono shrink-0 text-fg">{count}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Section>
-
-          {/* Quick jump */}
-          <Section title="Recent jobs">
-            <div className="space-y-0.5 p-1.5 md:p-2">
-              {jobs.slice(0, 5).map((j) => (
-                <Link
-                  key={j.id}
-                  href={`/jobs/${j.id}`}
-                  className="group flex min-w-0 items-center gap-2.5 rounded-md px-2.5 py-1.5 transition-colors hover:bg-surface-2/60 md:py-2"
-                >
-                  <StatusPill status={j.status} />
-                  <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted group-hover:text-fg">
-                    {j.company || j.title || "untitled"}
-                  </span>
-                </Link>
-              ))}
             </div>
           </Section>
         </div>
       </div>
     </div>
   );
+}
+
+function DashboardStat({
+  label,
+  value,
+  icon,
+  href,
+  hint,
+}: {
+  label: string;
+  value: string | number;
+  icon: "briefcase" | "activity" | "calendar" | "gift" | "ban" | "trend";
+  href: string;
+  hint?: string;
+}) {
+  return (
+    <Link href={href} className="card card-hover group min-w-0 p-3 transition hover:-translate-y-0.5 sm:p-3.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="truncate text-[10.5px] text-muted sm:text-[11px]">{label}</span>
+        <Icon name={icon} size={15} className="shrink-0 text-muted-2 transition group-hover:text-accent" />
+      </div>
+      <div className="mt-3 flex items-end justify-between gap-2">
+        <span className="mono text-[24px] font-semibold leading-none tracking-tight text-fg sm:text-[27px]">{value}</span>
+        {hint && <span className="text-[9.5px] text-muted-2">{hint}</span>}
+      </div>
+    </Link>
+  );
+}
+
+function ActivityChart({ series }: { series: { key: string; label: string; count: number }[] }) {
+  const width = 720;
+  const baseline = 166;
+  const max = Math.max(4, ...series.map((point) => point.count));
+  const coords = series.map((point, index) => ({
+    ...point,
+    x: 34 + (index * 652) / Math.max(1, series.length - 1),
+    y: 18 + ((max - point.count) / max) * 138,
+  }));
+  const points = coords.map((point) => `${point.x},${point.y}`).join(" ");
+  const area = `${coords[0]?.x ?? 34},${baseline} ${points} ${coords.at(-1)?.x ?? 686},${baseline}`;
+  const ticks = [max, Math.ceil(max * 0.75), Math.ceil(max * 0.5), Math.ceil(max * 0.25), 0];
+  const labels = [0, 7, 14, 21, 29].map((index) => coords[index]).filter(Boolean);
+
+  if (!series.some((point) => point.count > 0)) {
+    return <div className="grid h-52 place-items-center text-[12px] text-muted">Your saved jobs will appear here over time.</div>;
+  }
+
+  return (
+    <svg viewBox={`0 0 ${width} 212`} className="h-48 w-full overflow-visible sm:h-56" role="img" aria-label={`Applications added in the last 30 days; peak daily count ${max}`}>
+      <defs>
+        <linearGradient id="activity-fill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#ededed" stopOpacity="0.16" />
+          <stop offset="100%" stopColor="#ededed" stopOpacity="0.01" />
+        </linearGradient>
+      </defs>
+      {ticks.map((tick, index) => {
+        const y = 18 + index * 34.5;
+        return (
+          <g key={`${tick}-${index}`}>
+            <line x1="34" x2="686" y1={y} y2={y} stroke="#262626" strokeDasharray="3 5" />
+            <text x="25" y={y + 3} textAnchor="end" fill="#737373" fontSize="9">{tick}</text>
+          </g>
+        );
+      })}
+      <polygon points={area} fill="url(#activity-fill)" />
+      <polyline points={points} fill="none" stroke="#ededed" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      {coords.map((point) => point.count > 0 ? (
+        <circle key={point.key} cx={point.x} cy={point.y} r="2.5" fill="#ededed"><title>{point.label}: {point.count} added</title></circle>
+      ) : null)}
+      {labels.map((point) => <text key={point.key} x={point.x} y="196" textAnchor="middle" fill="#737373" fontSize="9">{point.label}</text>)}
+    </svg>
+  );
+}
+
+function initials(value: string): string {
+  return value.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("") || "?";
 }

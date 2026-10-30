@@ -18,6 +18,10 @@ type IconName =
   | "note"
   | "clock"
   | "download"
+  | "activity"
+  | "gift"
+  | "ban"
+  | "trend"
   | "menu"
   | "close";
 
@@ -45,6 +49,10 @@ const PATHS: Record<IconName, string> = {
   note: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M9 13h6M9 17h4",
   clock: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2",
   download: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3",
+  activity: "M22 12h-4l-3 9L9 3l-3 9H2",
+  gift: "M20 12v10H4V12M2 7h20v5H2zM12 22V7m0 0H7.5a2.5 2.5 0 1 1 2.5-2.5C10 6 12 7 12 7zm0 0h4.5A2.5 2.5 0 1 0 14 4.5C14 6 12 7 12 7z",
+  ban: "M18.364 5.636a9 9 0 1 1-12.728 12.728A9 9 0 0 1 18.364 5.636zM6.343 6.343l11.314 11.314",
+  trend: "M3 17l6-6 4 4 8-8M15 7h6v6",
   menu: "M3 12h18M3 6h18M3 18h18",
   close: "M18 6 6 18M6 6l12 12",
 };

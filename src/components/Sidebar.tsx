@@ -149,7 +149,7 @@ export function Sidebar({ email }: SidebarProps) {
                 aria-current={active ? "page" : undefined}
                 className={`group relative flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                   active
-                    ? "bg-surface-2 font-medium text-fg"
+                    ? "bg-surface-2 font-medium text-fg before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-fg"
                     : "text-muted hover:bg-surface-2/60 hover:text-fg"
                 }`}
               >
