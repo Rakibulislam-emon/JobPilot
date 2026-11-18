@@ -143,7 +143,11 @@ const { outputText: urlOutput } = ts.transpileModule(urlSource, {
 });
 const urlModule = { exports: {} };
 vm.runInNewContext(urlOutput, { module: urlModule, exports: urlModule.exports, URL });
-const { extractJobUrl } = urlModule.exports;
+const {
+  extractJobUrl,
+  getApplicationHref,
+  isValidApplicationLink,
+} = urlModule.exports;
 assert.equal(
   extractJobUrl("Role: Analyst\nApply here: https://jobs.example.com/apply?id=42."),
   "https://jobs.example.com/apply?id=42",
@@ -155,4 +159,34 @@ assert.equal(
   "prefer application URL over social post URL"
 );
 assert.equal(extractJobUrl("No link in this post"), "", "empty when post contains no URL");
-console.log("Passed 3 copied job-link extraction cases.");
+assert.equal(
+  extractJobUrl(
+    "🚨 We Are Hiring! | Join Bengol Bay Team 🚨\n" +
+      "📩 Apply করুন:\nCV পাঠান : cv.jobersbd@gmail.com\n" +
+      "আপনার career journey শুরু হোক Bengol Bay-এর সাথে।"
+  ),
+  "cv.jobersbd@gmail.com",
+  "extract the Bengol Bay application email from the example post"
+);
+assert.equal(
+  extractJobUrl("Apply here: https://jobs.example.com/apply\nEmail: cv@example.com"),
+  "https://jobs.example.com/apply",
+  "prefer a direct application URL over an email"
+);
+assert.equal(
+  extractJobUrl("Apply করুন WhatsApp: ০১৭১২৩৪৫৬৭৮"),
+  "০১৭১২৩৪৫৬৭৮",
+  "extract Bengali-digit WhatsApp number"
+);
+assert.equal(
+  getApplicationHref("cv.jobersbd@gmail.com"),
+  "mailto:cv.jobersbd@gmail.com",
+  "make an extracted email clickable"
+);
+assert.equal(
+  getApplicationHref("01712345678"),
+  "https://wa.me/8801712345678",
+  "make a Bangladesh WhatsApp number clickable"
+);
+assert.equal(isValidApplicationLink("not a contact or URL"), false);
+console.log("Passed 9 copied application-link/contact extraction cases.");

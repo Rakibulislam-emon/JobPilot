@@ -6,7 +6,11 @@ import { Input } from "@/components/ui/input";
 import { PRIORITY_LABELS, SOURCES, STATUS_META, STATUS_ORDER } from "@/lib/constants";
 import { formatDateInput } from "@/lib/format";
 import { fileToDataUrl, ocrDataUrl } from "@/lib/image";
-import { extractJobUrl } from "@/lib/jobUrl";
+import {
+  extractJobUrl,
+  getApplicationHref,
+  getApplicationLinkLabel,
+} from "@/lib/jobUrl";
 import type { Job, Status } from "@/lib/types";
 import Link from "next/link";
 import { useActionState, useRef, useState } from "react";
@@ -243,15 +247,16 @@ export function JobForm({ job }: { job?: Job }) {
         <input type="hidden" name="applied_at" defaultValue={formatDateInput(job?.applied_at)} />
 
         <div className="card p-4">
-          <Label htmlFor="url">Job link</Label>
+          <Label htmlFor="url">Apply link or contact</Label>
           <Input
             id="url"
             name="url"
-            type="url"
+            type="text"
             defaultValue={job?.url ?? ""}
-            placeholder="https://…"
+            autoCapitalize="none"
+            placeholder="URL, email, or WhatsApp number"
           />
-          <p className="mt-1.5 text-[11px] text-muted">If the copied post includes an apply link, Extract fields will add it here automatically.</p>
+          <p className="mt-1.5 text-[11px] text-muted">Extract fields adds an apply URL, email address, or WhatsApp number from the post when available.</p>
         </div>
 
         {/* ── Screenshot scanner ───────────────────────────── */}
@@ -501,13 +506,13 @@ export function JobForm({ job }: { job?: Job }) {
           </Link>
           {job?.url && (
             <a
-              href={job.url}
+              href={getApplicationHref(job.url) ?? undefined}
               target="_blank"
               rel="noreferrer"
               className="btn btn-ghost ml-auto"
             >
               <Icon name="external" size={13} />
-              Open posting
+              {getApplicationLinkLabel(job.url)}
             </a>
           )}
         </div>

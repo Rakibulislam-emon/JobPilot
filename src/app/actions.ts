@@ -1,5 +1,6 @@
 "use server";
 
+import { isValidApplicationLink } from "@/lib/jobUrl";
 import { removeScreenshot, uploadFile } from "@/lib/storage";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import type { Status } from "@/lib/types";
@@ -58,8 +59,8 @@ export async function saveJob(formData: FormData) {
     notes: str(formData, "notes"),
   };
 
-  if (job.url && !isHttpUrl(job.url)) {
-    return { error: "Enter a valid job link starting with https:// or http://." };
+  if (job.url && !isValidApplicationLink(job.url)) {
+    return { error: "Enter a valid apply link, email address, or WhatsApp number." };
   }
   if (!job.url && !job.title && !job.company) {
     return { error: "Add a job link, role, or company before saving." };
@@ -252,13 +253,4 @@ function revalidateAll() {
   revalidatePath("/");
   revalidatePath("/jobs");
   revalidatePath("/board");
-}
-
-function isHttpUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
 }

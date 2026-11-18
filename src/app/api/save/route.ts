@@ -1,4 +1,5 @@
 import { authorizeApi } from "@/lib/apiAuth";
+import { isValidApplicationLink } from "@/lib/jobUrl";
 import { uploadScreenshot } from "@/lib/storage";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
@@ -48,9 +49,9 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  if (url && !isHttpUrl(url)) {
+  if (url && !isValidApplicationLink(url)) {
     return NextResponse.json(
-      { error: "Job link must start with http:// or https://." },
+      { error: "Job link must be a valid URL, email address, or WhatsApp number." },
       { status: 400 }
     );
   }
@@ -145,13 +146,4 @@ export async function POST(req: Request) {
     id: created.id,
     url: `/jobs/${created.id}`,
   });
-}
-
-function isHttpUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
 }

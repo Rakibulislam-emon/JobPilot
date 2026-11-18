@@ -10,6 +10,7 @@ import { STATUS_META } from "@/lib/constants";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { signedScreenshotUrl } from "@/lib/supabase/admin";
 import { daysUntil, formatDate, relativeTime } from "@/lib/format";
+import { getApplicationHref, getApplicationLinkLabel } from "@/lib/jobUrl";
 import type { Activity, Contact, Job, Status } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -82,13 +83,13 @@ export default async function JobDetailPage({
           </Link>
           {job.url && (
             <a
-              href={job.url}
+              href={getApplicationHref(job.url) ?? undefined}
               target="_blank"
               rel="noreferrer"
               className="btn btn-primary"
             >
               <Icon name="external" size={13} />
-              Open posting
+              {getApplicationLinkLabel(job.url)}
             </a>
           )}
         </div>
