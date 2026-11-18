@@ -75,6 +75,27 @@ create table if not exists public.contacts (
 create index if not exists contacts_job_idx on public.contacts (job_id);
 
 -- ------------------------------------------------------------
+-- 3b. Interview question bank
+-- ------------------------------------------------------------
+create table if not exists public.interview_questions (
+  id         uuid primary key default gen_random_uuid(),
+  job_id     uuid not null references public.jobs (id) on delete cascade,
+  user_id    uuid not null references auth.users (id) on delete cascade,
+  round      text not null default '',
+  question   text not null,
+  answer     text not null default '',
+  status     text not null default 'missed'
+             check (status in ('missed','shaky','solid')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists interview_questions_job_idx
+  on public.interview_questions (job_id, created_at desc);
+create index if not exists interview_questions_user_status_idx
+  on public.interview_questions (user_id, status);
+
+-- ------------------------------------------------------------
 -- 4. Attachments (extra screenshots / JD files)
 -- ------------------------------------------------------------
 create table if not exists public.attachments (
@@ -116,6 +137,11 @@ create trigger jobs_touch_updated_at
   before update on public.jobs
   for each row execute function public.touch_updated_at();
 
+drop trigger if exists interview_questions_touch_updated_at on public.interview_questions;
+create trigger interview_questions_touch_updated_at
+  before update on public.interview_questions
+  for each row execute function public.touch_updated_at();
+
 -- ------------------------------------------------------------
 -- 7. Row Level Security — every row belongs to exactly one auth user
 -- ------------------------------------------------------------
@@ -124,11 +150,13 @@ alter table public.activities  enable row level security;
 alter table public.contacts    enable row level security;
 alter table public.attachments enable row level security;
 alter table public.ai_provider_keys enable row level security;
+alter table public.interview_questions enable row level security;
 
 drop policy if exists "own jobs"        on public.jobs;
 drop policy if exists "own activities"  on public.activities;
 drop policy if exists "own contacts"    on public.contacts;
 drop policy if exists "own attachments" on public.attachments;
+drop policy if exists "own interview questions" on public.interview_questions;
 
 create policy "own jobs" on public.jobs
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
@@ -140,6 +168,9 @@ create policy "own contacts" on public.contacts
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "own attachments" on public.attachments
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "own interview questions" on public.interview_questions
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ------------------------------------------------------------

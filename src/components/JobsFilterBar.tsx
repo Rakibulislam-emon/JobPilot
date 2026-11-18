@@ -1,6 +1,15 @@
 "use client";
 
 import { Icon } from "@/components/Icon";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { SOURCES, STATUS_META, STATUS_ORDER } from "@/lib/constants";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -31,7 +40,7 @@ function buildHref(draft: Draft): string {
 
 /**
  * Instant job filters. Typing is debounced, dropdowns apply on change and the
- * plain GET form still works if JavaScript is unavailable.
+ * plain GET form keeps working when JavaScript is unavailable.
  */
 export function JobsFilterBar({ q, status, source, sort }: Draft) {
   const router = useRouter();
@@ -41,8 +50,6 @@ export function JobsFilterBar({ q, status, source, sort }: Draft) {
   const latest = useRef<Draft>({ q, status, source, sort });
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Keep the boxes in sync when the URL changes from elsewhere (back/forward,
-  // Reset, a link from the dashboard).
   useEffect(() => {
     const incoming = { q, status, source, sort };
     const current = latest.current;
@@ -105,98 +112,142 @@ export function JobsFilterBar({ q, status, source, sort }: Draft) {
         event.preventDefault();
         schedule(latest.current, true);
       }}
-      className="card mb-4 overflow-hidden"
+      className="mb-6"
     >
-      <div className="flex flex-col gap-3 p-3 sm:p-4">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <div className="relative min-w-45 flex-1">
-            <Icon
-              name="search"
-              size={15}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+      {/* Keep the GET form functional without JavaScript. */}
+      <input type="hidden" name="source" value={values.source} />
+      <input type="hidden" name="sort" value={values.sort} />
+      <input type="hidden" name="status" value={values.status} />
+
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+        <div className="relative min-w-0 flex-1">
+          <Icon
+            name="search"
+            size={15}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+          />
+          <Input
+            name="q"
+            value={values.q}
+            onChange={(event) => update({ q: event.target.value }, false)}
+            placeholder="Search jobs, companies, links…"
+            aria-label="Search jobs"
+            autoComplete="off"
+            spellCheck={false}
+            className="h-9 pl-9 pr-9 text-[12.5px]"
+          />
+          {isPending ? (
+            <span
+              aria-label="Updating results"
+              className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin rounded-full border border-line-3 border-t-fg-2"
             />
-            <input
-              name="q"
-              value={values.q}
-              onChange={(event) => update({ q: event.target.value }, false)}
-              placeholder="Search jobs, companies, links…"
-              aria-label="Search jobs"
-              autoComplete="off"
-              spellCheck={false}
-              className="input h-10 pl-9 pr-9"
-            />
-            {isPending ? (
-              <span
-                aria-label="Updating results"
-                className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin rounded-full border border-line-3 border-t-fg-2"
-              />
-            ) : values.q ? (
-              <button
-                type="button"
-                onClick={() => update({ q: "" }, true)}
-                aria-label="Clear search"
-                className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded text-muted hover:bg-surface-2 hover:text-fg"
-              >
-                <Icon name="close" size={12} />
-              </button>
-            ) : null}
-          </div>
-          <select
-            name="source"
-            value={values.source}
-            onChange={(event) => update({ source: event.target.value }, true)}
-            aria-label="Filter by source"
-            className="input h-10 w-full sm:w-auto sm:min-w-32.5"
-          >
-            <option value="">Every source</option>
-            {SOURCES.map((s) => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
-          </select>
-          <select
-            name="sort"
-            value={values.sort}
-            onChange={(event) => update({ sort: event.target.value }, true)}
-            aria-label="Sort jobs"
-            className="input h-10 w-full sm:w-auto sm:min-w-36"
-          >
-            {SORT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-          <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true">Apply</button>
+          ) : values.q ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => update({ q: "" }, true)}
+              aria-label="Clear search"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted hover:text-fg"
+            >
+              <Icon name="close" size={12} />
+            </Button>
+          ) : null}
         </div>
 
-        <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto border-t border-line pt-3" aria-label="Filter by status">
-          <button
-            type="button"
-            aria-pressed={!values.status}
-            onClick={() => update({ status: "" }, true)}
-            className={`shrink-0 rounded-md px-2.5 py-1.5 text-[11px] transition ${!values.status ? "bg-surface-3 text-fg" : "text-muted hover:bg-surface-2 hover:text-fg"}`}
+        <div className="flex flex-wrap items-center gap-2">
+          <Select
+            value={values.source || "all"}
+            onValueChange={(value) =>
+              update({ source: value === "all" ? "" : (value ?? "") }, true)
+            }
           >
-            All jobs
-          </button>
-          {STATUS_ORDER.map((status) => {
-            const active = values.status === status;
-            return (
-              <button
-                key={status}
-                type="button"
-                aria-pressed={active}
-                onClick={() => update({ status: active ? "" : status }, true)}
-                className={`flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] transition ${active ? "bg-surface-3 text-fg" : "text-muted hover:bg-surface-2 hover:text-fg"}`}
-              >
-                <span className={`h-1.5 w-1.5 rounded-full ${STATUS_META[status].dot}`} />
-                {STATUS_META[status].short}
-              </button>
-            );
-          })}
-          {hasFilters && (
-            <button type="button" onClick={reset} className="ml-auto shrink-0 px-2.5 py-1.5 text-[11px] text-muted transition hover:text-fg">
-              Clear filters
-            </button>
-          )}
+            <SelectTrigger
+              aria-label="Filter by source"
+              className="h-9 w-full min-w-32 text-[12.5px] sm:w-36"
+            >
+              <SelectValue>
+                {(value) =>
+                  value === "all"
+                    ? "Every source"
+                    : SOURCES.find((item) => item.value === value)?.label ?? "Every source"
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Every source</SelectItem>
+              {SOURCES.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={values.sort}
+            onValueChange={(value) => update({ sort: value ?? "new" }, true)}
+          >
+            <SelectTrigger
+              aria-label="Sort jobs"
+              className="h-9 w-full min-w-36 text-[12.5px] sm:w-40"
+            >
+              <SelectValue>
+                {(value) =>
+                  SORT_OPTIONS.find((option) => option.value === value)?.label ?? "Newest first"
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {SORT_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+      </div>
+
+      <div className="no-scrollbar mt-3 flex items-center gap-1 overflow-x-auto" aria-label="Filter by status">
+        <Button
+          type="button"
+          variant={values.status ? "ghost" : "secondary"}
+          size="xs"
+          aria-pressed={!values.status}
+          onClick={() => update({ status: "" }, true)}
+          className="shrink-0 text-[11px]"
+        >
+          All
+        </Button>
+        {STATUS_ORDER.map((item) => {
+          const active = values.status === item;
+          return (
+            <Button
+              key={item}
+              type="button"
+              variant={active ? "secondary" : "ghost"}
+              size="xs"
+              aria-pressed={active}
+              onClick={() => update({ status: active ? "" : item }, true)}
+              className="shrink-0 gap-1.5 text-[11px]"
+            >
+              <span className={`size-1.5 rounded-full ${STATUS_META[item].dot}`} />
+              {STATUS_META[item].short}
+            </Button>
+          );
+        })}
+        {hasFilters && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            onClick={reset}
+            className="ml-auto shrink-0 text-[11px] text-muted"
+          >
+            Clear filters
+          </Button>
+        )}
       </div>
     </form>
   );

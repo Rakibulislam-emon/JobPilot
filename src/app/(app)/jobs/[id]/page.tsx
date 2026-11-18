@@ -1,28 +1,53 @@
-import Link from "next/link";
-import { notFound } from "next/navigation";
+import { addNote, deleteJob } from "@/app/actions";
+import { ConfirmSubmit } from "@/components/ConfirmSubmit";
+import { EditJobTrigger } from "@/components/EditJobTrigger";
 import { Icon } from "@/components/Icon";
-import { Section } from "@/components/Shell";
+import { InterviewQuestions } from "@/components/InterviewQuestions";
 import { StatusPill } from "@/components/StatusPill";
 import { StatusSwitcher } from "@/components/StatusSwitcher";
-import { ConfirmSubmit } from "@/components/ConfirmSubmit";
-import { addContact, addNote, deleteContact, deleteJob } from "@/app/actions";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { STATUS_META } from "@/lib/constants";
-import { createClient, requireUser } from "@/lib/supabase/server";
-import { signedScreenshotUrl } from "@/lib/supabase/admin";
 import { daysUntil, formatDate, relativeTime } from "@/lib/format";
 import { getApplicationHref, getApplicationLinkLabel } from "@/lib/jobUrl";
-import type { Activity, Contact, Job, Status } from "@/lib/types";
+import { signedScreenshotUrl } from "@/lib/supabase/admin";
+import { createClient, requireUser } from "@/lib/supabase/server";
+import type { Activity, InterviewQuestion, Job, Status } from "@/lib/types";
+import { cn } from "cn";
+import Link from "next/link";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-function Meta({ label, value }: { label: string; value?: React.ReactNode }) {
+function DetailBlock({
+  label,
+  right,
+  children,
+}: {
+  label: string;
+  right?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
-    <div>
-      <div className="text-[11.5px] text-muted">
-        {label}
+    <section className="min-w-0">
+      <div className="mb-2.5 flex items-center justify-between gap-3">
+        <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-2">
+          {label}
+        </h2>
+        {right}
       </div>
-      <div className="mt-0.5 text-[13px] text-fg">
-        {value || <span className="text-muted-2">—</span>}
+      {children}
+    </section>
+  );
+}
+
+function DetailFact({ label, value }: { label: string; value?: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-2">{label}</div>
+      <div className="mt-1.5 truncate text-[12.5px] font-medium text-fg">
+        {value || <span className="font-normal text-muted-2">Not specified</span>}
       </div>
     </div>
   );
@@ -47,283 +72,242 @@ export default async function JobDetailPage({
   if (!data) notFound();
   const job = data as Job;
 
-  const [activityResult, contactsResult] = await Promise.all([
+  const [activityResult, questionsResult] = await Promise.all([
     supabase
       .from("activities")
       .select("*")
       .eq("job_id", id)
       .order("happened_at", { ascending: false }),
     supabase
-      .from("contacts")
+      .from("interview_questions")
       .select("*")
       .eq("job_id", id)
-      .order("created_at", { ascending: true }),
+      .order("created_at", { ascending: false }),
   ]);
 
   const activities = (activityResult.data ?? []) as Activity[];
-  const contacts = (contactsResult.data ?? []) as Contact[];
+  const questions = (questionsResult.data ?? []) as InterviewQuestion[];
+  const questionsMissing = questionsResult.error?.code === "PGRST205";
   const shotUrl = await signedScreenshotUrl(job.screenshot);
 
   const dleft = daysUntil(job.deadline);
   const closed = ["offer", "rejected", "ghosted", "withdrawn"].includes(job.status);
 
+  const deadlineTone =
+    dleft !== null && dleft < 0
+      ? "border-danger/25 bg-danger-soft text-danger"
+      : dleft !== null && dleft <= 3
+        ? "border-warn/25 bg-warn-soft text-warn"
+        : "border-info/20 bg-info-soft text-info";
+
+  const href = job.url ? getApplicationHref(job.url) : null;
+
+  const aiMeta = job.ai_meta && typeof job.ai_meta === "object" ? job.ai_meta : {};
+  const rawPost = typeof aiMeta.raw_post === "string" ? aiMeta.raw_post : "";
+  const hasOriginal = Boolean(rawPost.trim() || shotUrl);
+
   return (
-    <div className="animate-in">
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <Link
-          href="/jobs"
-          className="inline-flex items-center gap-1.5 text-[12px] text-muted transition hover:text-fg"
-        >
-          <Icon name="back" size={14} />
-          All jobs
-        </Link>
-        <div className="flex items-center gap-2">
-          <Link href={`/jobs/${job.id}/edit`} className="btn btn-ghost">
-            Edit
+    <div className="animate-in min-w-0">
+      {/* Header */}
+      <header className="mb-6 border-b border-line pb-5">
+        <div className="flex items-center justify-between gap-3">
+          <Link
+            href="/jobs"
+            className="inline-flex items-center gap-1.5 rounded-md text-[11.5px] text-muted transition-colors hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <Icon name="back" size={13} />
+            All jobs
           </Link>
-          {job.url && (
-            <a
-              href={getApplicationHref(job.url) ?? undefined}
-              target="_blank"
-              rel="noreferrer"
-              className="btn btn-primary"
-            >
-              <Icon name="external" size={13} />
-              {getApplicationLinkLabel(job.url)}
-            </a>
-          )}
+          <div className="flex items-center gap-2">
+            {href && (
+              <a href={href} target="_blank" rel="noreferrer" className={buttonVariants({ variant: "outline", size: "sm" })}>
+                <Icon name="external" size={13} />
+                <span className="hidden sm:inline">{getApplicationLinkLabel(job.url)}</span>
+              </a>
+            )}
+            <EditJobTrigger job={job} />
+          </div>
         </div>
-      </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
-          <div className="card p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h1 className="display text-[24px] tracking-tight text-fg">
-                  {job.title || "(untitled role)"}
-                </h1>
-                <p className="mt-1 text-[13px] text-muted">
-                  {job.company || "Unknown company"}
-                  {job.location ? ` · ${job.location}` : ""}
-                </p>
-              </div>
-              <StatusPill status={job.status} size="md" />
-            </div>
+        <div className="mt-4 min-w-0">
+          <h1 className="display wrap-break-word text-[28px] leading-tight sm:text-[34px]">
+            {job.title || "(untitled role)"}
+          </h1>
+          <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[12px] text-muted">
+            <span className="font-medium text-fg-2">{job.company || "Unknown company"}</span>
+            {job.location && (
+              <>
+                <span aria-hidden="true" className="text-line-3">·</span>
+                <span>{job.location}</span>
+              </>
+            )}
+            <StatusPill status={job.status} />
+          </div>
+        </div>
+      </header>
 
-            <div className="mt-5 grid grid-cols-2 gap-4 border-t border-line pt-4 sm:grid-cols-4">
-              <Meta label="Salary" value={job.salary} />
-              <Meta label="Type" value={job.job_type} />
-              <Meta label="Source" value={job.source} />
-              <Meta label="Priority" value={`${job.priority} / 5`} />
-              <Meta
-                label="Deadline"
-                value={
-                  job.deadline ? (
-                    <span
-                      className={
-                        !closed && dleft !== null && dleft < 0
-                          ? "text-danger"
-                          : !closed && dleft !== null && dleft <= 3
-                            ? "text-warn"
-                            : ""
-                      }
-                    >
-                      {formatDate(job.deadline)}
-                      {!closed && dleft !== null && dleft >= 0 && (
-                        <span className="ml-1 text-[11px] text-muted">
-                          ({dleft === 0 ? "today" : `${dleft}d left`})
-                        </span>
-                      )}
-                    </span>
-                  ) : null
-                }
-              />
-              <Meta label="Applied" value={job.applied_at ? formatDate(job.applied_at) : null} />
-              <Meta label="Added" value={formatDate(job.created_at)} />
-              <Meta label="Updated" value={relativeTime(job.updated_at)} />
+      {/* Deadline signal */}
+      {job.deadline && !closed && dleft !== null && (
+        <div className={cn("mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3.5 py-3", deadlineTone)}>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="grid size-7 shrink-0 place-items-center rounded-md border border-current/20 bg-current/10">
+              <Icon name="clock" size={14} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[9.5px] font-semibold uppercase tracking-[0.14em] opacity-80">Deadline</p>
+              <p className="text-[13px] font-medium">
+                {formatDate(job.deadline)}
+                <span className="ml-2 font-normal opacity-85">
+                  {dleft < 0
+                    ? `${Math.abs(dleft)} day${Math.abs(dleft) === 1 ? "" : "s"} overdue`
+                    : dleft === 0
+                      ? "Today — last chance"
+                      : `${dleft} day${dleft === 1 ? "" : "s"} left`}
+                </span>
+              </p>
             </div>
           </div>
+          <span className="text-[11px] opacity-80">
+            {dleft < 0 ? "Move this job on or let it go" : job.status === "saved" ? "Apply before this date" : "Keep the momentum going"}
+          </span>
+        </div>
+      )}
 
+      {/* Facts */}
+      <section aria-label="Job details" className="mb-7 grid grid-cols-2 gap-x-5 gap-y-4 border-b border-line pb-5 sm:grid-cols-3 lg:grid-cols-5">
+        <DetailFact label="Salary" value={job.salary} />
+        <DetailFact label="Employment" value={job.job_type} />
+        <DetailFact label="Source" value={job.source} />
+        <DetailFact label="Applied" value={job.applied_at ? formatDate(job.applied_at) : "Not yet"} />
+      </section>
+
+      {/* Original post — kept verbatim so the job's source never needs to be revisited. */}
+      {hasOriginal && (
+        <details className="group mb-7 overflow-hidden rounded-lg border border-line bg-surface/40">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-2.5 text-[12px] text-fg-2 transition-colors hover:text-fg [&::-webkit-details-marker]:hidden">
+            <span className="flex min-w-0 items-center gap-2">
+              <Icon name="note" size={14} className="shrink-0 text-muted" />
+              <span>Original post</span>
+              <span className="flex items-center gap-1.5">
+                {rawPost.trim() && (
+                  <Badge variant="outline" className="h-4 px-1.5 text-[9px] font-normal text-fg-2">Text</Badge>
+                )}
+                {shotUrl && (
+                  <Badge variant="outline" className="h-4 px-1.5 text-[9px] font-normal text-fg-2">Screenshot</Badge>
+                )}
+              </span>
+            </span>
+            <Icon name="back" size={13} className="shrink-0 text-muted transition-transform group-open:rotate-90" />
+          </summary>
+          <div className="space-y-4 border-t border-line px-3.5 py-3.5">
+            {rawPost.trim() && (
+              <pre className="max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-md border border-line bg-bg/60 p-3 font-sans text-[12px] leading-relaxed text-fg/90">
+                {rawPost}
+              </pre>
+            )}
+            {shotUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={shotUrl} alt="Original job post screenshot" className="w-full rounded-lg border border-line" />
+            )}
+          </div>
+        </details>
+      )}
+
+      <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_260px] xl:gap-9">
+        {/* Main column */}
+        <div className="min-w-0 space-y-7">
           {job.description && (
-            <Section title="Summary">
-              <p className="whitespace-pre-line px-4 py-4 text-[13px] leading-relaxed text-fg/90">
-                {job.description}
-              </p>
-            </Section>
+            <DetailBlock label="Summary">
+              <p className="whitespace-pre-line text-[13px] leading-relaxed text-fg/90">{job.description}</p>
+            </DetailBlock>
           )}
 
           {job.notes && (
-            <Section title="Private notes">
-              <p className="whitespace-pre-line px-4 py-4 text-[13px] leading-relaxed text-fg/90">
-                {job.notes}
-              </p>
-            </Section>
+            <DetailBlock label="Private notes">
+              <p className="whitespace-pre-line text-[13px] leading-relaxed text-fg/90">{job.notes}</p>
+            </DetailBlock>
           )}
 
-          {shotUrl && (
-            <Section title="Screenshot">
-              <div className="p-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={shotUrl}
-                  alt="Job post screenshot"
-                  className="w-full rounded-lg border border-line"
-                />
-              </div>
-            </Section>
-          )}
-
-          <Section
-            title="Timeline"
-            right={
-              <span className="mono text-[11px] text-muted">
-                {activities.length} event{activities.length === 1 ? "" : "s"}
-              </span>
-            }
-          >
-            <form action={addNote} className="flex gap-2 border-b border-line p-3">
-              <input type="hidden" name="job_id" value={job.id} />
-              <input
-                name="note"
-                placeholder="Add a note — recruiter called, interview scheduled…"
-                className="input"
-                required
-              />
-              <button type="submit" className="btn btn-primary shrink-0">
-                <Icon name="plus" size={14} />
-                Add
-              </button>
-            </form>
-
-            <ul className="divide-y divide-line">
-              {activities.map((a) => {
-                const to = (a.to_status as Status) ?? null;
-                return (
-                  <li key={a.id} className="flex gap-3 px-4 py-3">
-                    <div className="mt-1 grid h-6 w-6 shrink-0 place-items-center rounded-full border border-line bg-surface-2">
-                      <span
-                        className={`h-1.5 w-1.5 rounded-full ${
-                          to ? STATUS_META[to]?.dot ?? "bg-muted" : "bg-accent"
-                        }`}
-                      />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[12.5px]">
-                        {a.kind === "status" ? (
-                          <>
-                            Status changed{" "}
-                            <span className="text-muted">
-                              {STATUS_META[(a.from_status as Status) ?? "saved"]?.label}
-                            </span>{" "}
-                            →{" "}
-                            <span className="font-medium text-fg">
-                              {STATUS_META[(a.to_status as Status) ?? "saved"]?.label}
-                            </span>
-                          </>
-                        ) : a.kind === "note" ? (
-                          <span className="whitespace-pre-line">{a.note}</span>
-                        ) : a.kind === "created" ? (
-                          <>Job added to JobDesk</>
-                        ) : (
-                          a.note || a.kind
-                        )}
-                      </div>
-                      <div className="mt-0.5 text-[10.5px] text-muted">
-                        {relativeTime(a.happened_at)} · {formatDate(a.happened_at)}
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-              {activities.length === 0 && (
-                <li className="px-4 py-6 text-center text-xs text-muted">
-                  No events yet.
-                </li>
-              )}
-            </ul>
-          </Section>
+          <InterviewQuestions jobId={job.id} questions={questions} missingTable={questionsMissing} />
         </div>
 
-        <div className="space-y-4">
-          <Section title="Move to">
-            <div className="p-3.5">
-              <StatusSwitcher jobId={job.id} current={job.status} />
-            </div>
-          </Section>
+        {/* Rail */}
+        <aside className="min-w-0 space-y-6">
+          <DetailBlock label="Move to status">
+            <StatusSwitcher jobId={job.id} current={job.status} />
+          </DetailBlock>
 
-          <Section title="Contacts">
-            <ul className="divide-y divide-line">
-              {contacts.map((c) => (
-                <li key={c.id} className="flex items-start gap-2 px-4 py-2.5">
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[12.5px] font-medium">
-                      {c.name || "Unnamed contact"}
-                    </div>
-                    {c.role && (
-                      <div className="truncate text-[11px] text-muted">{c.role}</div>
-                    )}
-                    {c.email && (
-                      <a
-                        href={`mailto:${c.email}`}
-                        className="block truncate text-[11px] text-fg-2 hover:text-fg hover:underline"
-                      >
-                        {c.email}
-                      </a>
-                    )}
-                    {c.phone && (
-                      <div className="truncate text-[11px] text-muted">{c.phone}</div>
-                    )}
-                  </div>
-                  <form action={deleteContact}>
-                    <input type="hidden" name="contact_id" value={c.id} />
-                    <input type="hidden" name="job_id" value={job.id} />
-                    <button
-                      type="submit"
-                      className="text-muted-2 transition-colors hover:text-danger"
-                      aria-label="Remove contact"
-                    >
-                      <Icon name="trash" size={12} />
-                    </button>
-                  </form>
-                </li>
-              ))}
-              {contacts.length === 0 && (
-                <li className="px-4 py-4 text-center text-[11px] text-muted">
-                  No contacts yet.
-                </li>
-              )}
-            </ul>
-
-            <details className="border-t border-line">
-              <summary className="cursor-pointer px-4 py-2.5 text-[11.5px] text-muted hover:text-fg">
-                + Add contact
-              </summary>
-              <form action={addContact} className="space-y-2 px-4 pb-4">
-                <input type="hidden" name="job_id" value={job.id} />
-                <input name="name" placeholder="Name" className="input" />
-                <input name="role" placeholder="Role (HR, team lead…)" className="input" />
-                <input name="email" type="email" placeholder="Email" className="input" />
-                <input name="phone" placeholder="Phone" className="input" />
-                <button type="submit" className="btn btn-ghost w-full">
-                  Save contact
-                </button>
-              </form>
-            </details>
-          </Section>
-
-          <form action={deleteJob} className="card p-3">
+          <form action={deleteJob} className="border-t border-line pt-4">
             <input type="hidden" name="id" value={job.id} />
             <ConfirmSubmit
               message="Delete this job and its whole history?"
-              className="btn btn-danger w-full"
+              className="inline-flex items-center gap-1.5 rounded-md text-[11.5px] text-muted transition-colors hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/30"
             >
-              <Icon name="trash" size={13} />
+              <Icon name="trash" size={12} />
               Delete job
             </ConfirmSubmit>
           </form>
-        </div>
+        </aside>
       </div>
+
+      {/* Timeline */}
+      <section className="mt-9 border-t border-line pt-6">
+        <DetailBlock
+          label="Timeline"
+          right={<span className="mono text-[11px] text-muted-2">{activities.length} event{activities.length === 1 ? "" : "s"}</span>}
+        >
+          <form action={addNote} className="mb-5 flex gap-2">
+            <input type="hidden" name="job_id" value={job.id} />
+            <Input
+              name="note"
+              placeholder="Add a note — recruiter called, interview scheduled…"
+              aria-label="Add a timeline note"
+              required
+              className="h-9 min-w-0 flex-1 text-[12.5px]"
+            />
+            <Button type="submit" size="sm" className="h-9 shrink-0">
+              <Icon name="plus" size={13} />
+              <span className="hidden sm:inline">Add note</span>
+            </Button>
+          </form>
+
+          <ol className="relative before:absolute before:bottom-4 before:left-[5px] before:top-3 before:w-px before:bg-line-2">
+            {activities.map((a) => {
+              const to = (a.to_status as Status) ?? null;
+              return (
+                <li key={a.id} className="relative grid grid-cols-[14px_minmax(0,1fr)] gap-x-3 py-2.5 sm:grid-cols-[14px_130px_minmax(0,1fr)] sm:items-center">
+                  <span className="relative z-10 mt-1.5 size-[11px] rounded-full border border-line-2 bg-bg sm:mt-0">
+                    <span className={cn("block size-full rounded-full", to ? STATUS_META[to]?.dot ?? "bg-muted" : "bg-accent")} />
+                  </span>
+                  <time dateTime={a.happened_at} className="hidden text-[11px] text-muted sm:col-start-2 sm:block">
+                    <span className="font-medium text-fg-2">{formatDate(a.happened_at)}</span>
+                    <span className="mt-0.5 block">{relativeTime(a.happened_at)}</span>
+                  </time>
+                  <div className="col-start-2 min-w-0 text-[12px] text-fg sm:col-start-3">
+                    {a.kind === "status" ? (
+                      <>
+                        <span className="text-muted">{STATUS_META[(a.from_status as Status) ?? "saved"]?.label}</span>
+                        <span className="mx-1.5 text-muted-2">→</span>
+                        <span className="font-medium">{STATUS_META[(a.to_status as Status) ?? "saved"]?.label}</span>
+                      </>
+                    ) : a.kind === "note" ? (
+                      <span className="whitespace-pre-line">{a.note}</span>
+                    ) : a.kind === "created" ? (
+                      <>Job added to JobDesk</>
+                    ) : (
+                      a.note || a.kind
+                    )}
+                    <span className="mt-0.5 block text-[10px] text-muted-2 sm:hidden">{relativeTime(a.happened_at)}</span>
+                  </div>
+                </li>
+              );
+            })}
+            {activities.length === 0 && (
+              <li className="py-6 text-center text-[11.5px] text-muted">No events yet.</li>
+            )}
+          </ol>
+        </DetailBlock>
+      </section>
     </div>
   );
 }

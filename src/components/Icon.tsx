@@ -1,4 +1,4 @@
-type IconName =
+export type IconName =
   | "grid"
   | "briefcase"
   | "columns"
@@ -23,7 +23,8 @@ type IconName =
   | "ban"
   | "trend"
   | "menu"
-  | "close";
+  | "close"
+  | "mail";
 
 const PATHS: Record<IconName, string> = {
   grid: "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z",
@@ -55,6 +56,7 @@ const PATHS: Record<IconName, string> = {
   trend: "M3 17l6-6 4 4 8-8M15 7h6v6",
   menu: "M3 12h18M3 6h18M3 18h18",
   close: "M18 6 6 18M6 6l12 12",
+  mail: "M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM22 7l-10 7L2 7",
 };
 
 export function Icon({

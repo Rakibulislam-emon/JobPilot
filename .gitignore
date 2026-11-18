@@ -18,3 +18,4 @@ next-env.d.ts
 
 # alternate build output (dev server running)
 .next-build
+.next-dev

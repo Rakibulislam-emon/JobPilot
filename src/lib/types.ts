@@ -49,6 +49,20 @@ export type Contact = {
   phone: string;
 };
 
+export type QuestionStatus = "missed" | "shaky" | "solid";
+
+export type InterviewQuestion = {
+  id: string;
+  job_id: string;
+  user_id: string;
+  round: string;
+  question: string;
+  answer: string;
+  status: QuestionStatus;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Draft = {
   company: string;
   title: string;

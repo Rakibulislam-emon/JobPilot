@@ -1,11 +1,19 @@
+import { AddJobTrigger } from "@/components/AddJobModal";
 import { Icon } from "@/components/Icon";
 import { JobsFilterBar } from "@/components/JobsFilterBar";
-import { PageHeader } from "@/components/Shell";
+import {
+  BulkJobActions,
+  JobCheckbox,
+  JobsSelectionProvider,
+  SelectAllCheckbox,
+} from "@/components/JobsSelection";
 import { StatusPill } from "@/components/StatusPill";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { SOURCES, STATUS_ORDER } from "@/lib/constants";
 import { daysUntil, formatDate, relativeTime } from "@/lib/format";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import type { Job } from "@/lib/types";
+import { cn } from "cn";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -72,7 +80,7 @@ function param(value: string | string[] | undefined): string {
 }
 
 function DeadlineCell({ job }: { job: Job }) {
-  if (!job.deadline) return <span className="text-muted/50">—</span>;
+  if (!job.deadline) return <span className="text-muted-2">—</span>;
   const d = daysUntil(job.deadline);
   const done = ["offer", "rejected", "ghosted", "withdrawn"].includes(job.status);
 
@@ -172,112 +180,124 @@ export default async function JobsPage({
 
   return (
     <div className="animate-in">
-      <PageHeader
-        eyebrow="APPLICATIONS"
-        title="Jobs"
-        subtitle="Keep every opportunity organized, from saved links to final decisions."
-        action={{ href: "/jobs/new", label: "Add job" }}
-      />
+      <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="display text-[26px] text-fg">Jobs</h1>
+          <p className="mt-1 text-[12px] text-muted">
+            {total} tracked{hasFilters ? " · filtered" : ""}
+          </p>
+        </div>
+        <AddJobTrigger className={buttonVariants({ variant: "default", size: "sm" })}>
+          <Icon name="plus" size={14} />
+          Add job
+        </AddJobTrigger>
+      </header>
 
       <JobsFilterBar q={filters.q} status={filters.status} source={filters.source} sort={filters.sort} />
 
       {error ? (
-        <div role="alert" className="rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger">
+        <div role="alert" className="rounded-lg border border-danger/25 bg-danger-soft px-4 py-3 text-[12.5px] text-danger">
           Could not load jobs. Please refresh and try again.
         </div>
       ) : jobs.length === 0 ? (
-        <div className="flex flex-col items-center rounded-xl border border-dashed border-line-2 px-6 py-14 text-center">
-          <p className="text-sm font-medium">No jobs match</p>
-          <p className="mt-1 text-xs text-muted">
-            {hasFilters
-              ? "Try clearing the filters."
-              : "Add your first job to start tracking."}
+        <div className="flex flex-col items-center border-y border-line px-6 py-14 text-center">
+          <p className="text-[13px] font-medium text-fg">No jobs match</p>
+          <p className="mt-1 text-[12px] text-muted">
+            {hasFilters ? "Try clearing the filters." : "Add your first job to start tracking."}
           </p>
-          <Link href="/jobs/new" className="btn btn-primary mt-4">
+          <AddJobTrigger className={cn(buttonVariants({ variant: "default", size: "sm" }), "mt-4")}>
             Add a job
-          </Link>
+          </AddJobTrigger>
         </div>
       ) : (
-        <div className="card overflow-hidden">
-          <div className="flex items-center justify-between border-b border-line px-4 py-3 sm:px-5">
-            <div>
-              <div className="text-[12px] font-medium text-fg">Your applications</div>
-              <div className="mt-0.5 text-[10.5px] text-muted">{total} result{total === 1 ? "" : "s"}{hasFilters ? " · filtered" : " · sorted by latest"}</div>
+        <JobsSelectionProvider ids={jobs.map((job) => job.id)}>
+          <BulkJobActions />
+
+          <div>
+            <div className="flex items-center justify-between border-b border-line px-1 pb-2.5">
+              <div className="flex items-center gap-2.5">
+                <SelectAllCheckbox />
+                <span className="text-[11.5px] font-medium text-fg">Applications</span>
+                <span className="text-[11px] text-muted-2">{total} results</span>
+              </div>
+              <span className="mono text-[10px] text-muted-2">{page}/{pageCount}</span>
             </div>
-            <span className="mono text-[10px] text-muted-2">{page}/{pageCount}</span>
-          </div>
 
-          <div className="hidden grid-cols-[minmax(0,1.5fr)_120px_100px_130px] gap-3 border-b border-line bg-surface-2/40 px-5 py-2.5 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-2 md:grid">
-            <span>Company / role</span>
-            <span>Status</span>
-            <span>Source</span>
-            <span className="text-right">Deadline</span>
-          </div>
+            <div className="hidden grid-cols-[20px_minmax(0,1.5fr)_120px_100px_130px] gap-3 border-b border-line px-1 py-2 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-2 lg:grid">
+              <span aria-hidden="true" />
+              <span>Company / role</span>
+              <span>Status</span>
+              <span>Source</span>
+              <span className="text-right">Deadline</span>
+            </div>
 
-          <ul className="divide-y divide-line">
-            {jobs.map((job) => (
-              <li key={job.id}>
-                <Link
-                  href={`/jobs/${job.id}`}
-                  className="group relative grid grid-cols-1 gap-2.5 px-3 py-3.5 transition-colors hover:bg-surface-2/50 sm:px-5 md:grid-cols-[minmax(0,1.5fr)_120px_100px_130px] md:items-center md:gap-3"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line-2 bg-surface-2 text-[10px] font-semibold text-fg-2 transition group-hover:border-line-3 group-hover:text-fg">
-                      {companyMark(job.company || job.title || job.url)}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span className="truncate text-[12.5px] font-medium text-fg">{job.company || "Company not set"}</span>
-                        {job.priority <= 2 && (
-                          <span className="pill shrink-0 border-line-2 bg-transparent px-1.5 py-0 text-[9px] text-fg-2">
-                            {job.priority === 1 ? "priority" : "high"}
+            <ul className="divide-y divide-line">
+              {jobs.map((job) => (
+                <li key={job.id}>
+                  <div className="grid grid-cols-[20px_minmax(0,1fr)] items-center gap-3 px-1">
+                    <JobCheckbox
+                      id={job.id}
+                      label={`${job.company || "Company not set"} — ${job.title || "Role not set"}`}
+                    />
+                    <Link
+                      href={`/jobs/${job.id}`}
+                      className="grid grid-cols-1 gap-2.5 rounded-md py-3 transition-colors hover:bg-surface-2/40 lg:grid-cols-[minmax(0,1.5fr)_120px_100px_130px] lg:items-center lg:gap-3"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line-2 bg-surface-2 text-[10px] font-semibold text-fg-2">
+                          {companyMark(job.company || job.title || job.url)}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span className="truncate text-[12.5px] font-medium text-fg">{job.company || "Company not set"}</span>
                           </span>
-                        )}
-                      </span>
-                      <span className="mt-0.5 flex min-w-0 items-center gap-1.5 truncate text-[11px] text-muted">
-                        <span className="truncate">{job.title || "Role not set"}</span>
-                        {job.location && <><span className="text-line-3">·</span><span className="truncate">{job.location}</span></>}
-                      </span>
-                    </span>
-                  </div>
+                          <span className="mt-0.5 flex min-w-0 items-center gap-1.5 truncate text-[11px] text-muted">
+                            <span className="truncate">{job.title || "Role not set"}</span>
+                            {job.location && <><span className="text-line-3">·</span><span className="truncate">{job.location}</span></>}
+                          </span>
+                        </span>
+                      </div>
 
-                  <div className="flex items-center justify-between gap-2 md:block">
-                    <StatusPill status={job.status} />
-                    <span className="text-[10px] text-muted md:hidden">{relativeTime(job.updated_at)}</span>
-                  </div>
+                      <div className="flex items-center justify-between gap-2 lg:block">
+                        <StatusPill status={job.status} />
+                        <span className="text-[10px] text-muted lg:hidden">{relativeTime(job.updated_at)}</span>
+                      </div>
 
-                  <div className="hidden text-[11.5px] capitalize text-muted md:block">
-                    {job.source || "—"}
-                  </div>
+                      <div className="hidden text-[11.5px] capitalize text-muted lg:block">
+                        {job.source || "—"}
+                      </div>
 
-                  <div className="flex items-center justify-between text-[11px] md:block md:text-right">
-                    <span className="text-[10px] text-muted md:hidden">Deadline</span>
-                    <DeadlineCell job={job} />
+                      <div className="flex items-center justify-between text-[11px] lg:block lg:text-right">
+                        <span className="text-[10px] text-muted lg:hidden">Deadline</span>
+                        <DeadlineCell job={job} />
+                      </div>
+                    </Link>
                   </div>
-                  <Icon name="external" size={13} className="absolute right-4 hidden text-muted-2 opacity-0 transition group-hover:opacity-100 xl:block" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </JobsSelectionProvider>
       )}
 
       {!error && total > 0 && (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[12px] text-muted">
-          <span>
-            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}
-          </span>
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-[11.5px] text-muted">
+          <span>Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}</span>
           <nav aria-label="Jobs pages" className="flex items-center gap-2">
             {page > 1 ? (
-              <Link href={jobsPageHref(filters, page - 1)} className="btn btn-ghost">Previous</Link>
+              <Link href={jobsPageHref(filters, page - 1)} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 px-2.5 text-[11.5px]")}>
+                Previous
+              </Link>
             ) : (
-              <span className="btn btn-ghost pointer-events-none opacity-40">Previous</span>
+              <Button variant="outline" size="sm" disabled className="h-8 px-2.5 text-[11.5px]">Previous</Button>
             )}
-            <span className="mono">{page} / {pageCount}</span>
+            <span className="mono text-[11px]">{page} / {pageCount}</span>
             {page < pageCount ? (
-              <Link href={jobsPageHref(filters, page + 1)} className="btn btn-ghost">Next</Link>
+              <Link href={jobsPageHref(filters, page + 1)} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 px-2.5 text-[11.5px]")}>
+                Next
+              </Link>
             ) : (
-              <span className="btn btn-ghost pointer-events-none opacity-40">Next</span>
+              <Button variant="outline" size="sm" disabled className="h-8 px-2.5 text-[11.5px]">Next</Button>
             )}
           </nav>
         </div>

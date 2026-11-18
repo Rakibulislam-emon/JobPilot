@@ -45,6 +45,28 @@
   --color-brand: var(--color-accent);
   --color-brand2: var(--color-accent-2);
 
+  /* shadcn primitives compatibility — mapped to the JobDesk palette
+     so generated components never fall back to generic token names. */
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-fg);
+  --color-popover: var(--color-bg-2);
+  --color-popover-foreground: var(--color-fg);
+  --color-muted-foreground: var(--color-muted);
+  --color-border: var(--color-line);
+  --color-ring: var(--color-accent);
+  --color-input: var(--color-line-2);
+  --color-primary: var(--color-invert);
+  --color-primary-foreground: var(--color-invert-fg);
+  --color-accent-foreground: var(--color-fg);
+
+  /* shadcn sidebar tokens */
+  --color-sidebar: var(--color-bg-2);
+  --color-sidebar-foreground: var(--color-fg-2);
+  --color-sidebar-accent: var(--color-surface-2);
+  --color-sidebar-accent-foreground: var(--color-fg);
+  --color-sidebar-border: var(--color-line);
+  --color-sidebar-ring: var(--color-accent);
+
   /* Status */
   --color-success: #34d399;
   --color-success-soft: rgba(52, 211, 153, 0.10);
@@ -372,5 +394,24 @@
     outline: 2px solid rgba(255, 255, 255, 0.4);
     outline-offset: 2px;
     border-radius: 0.375rem;
+  }
+}
+
+/* ── Pointer cursor on every clickable control ─────────────── */
+@layer base {
+  button:not(:disabled):not([aria-disabled="true"]),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="checkbox"]:not([aria-disabled="true"]),
+  [role="radio"]:not([aria-disabled="true"]),
+  [role="switch"]:not([aria-disabled="true"]),
+  [role="combobox"]:not([aria-disabled="true"]),
+  [role="option"]:not([aria-disabled="true"]):not([data-disabled]),
+  [role="menuitem"]:not([aria-disabled="true"]),
+  [role="tab"]:not([aria-disabled="true"]),
+  a[href],
+  summary,
+  select,
+  label:has(input, select, textarea) {
+    cursor: pointer;
   }
 }

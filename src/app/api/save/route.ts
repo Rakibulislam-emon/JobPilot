@@ -96,7 +96,6 @@ export async function POST(req: Request) {
     deadline: isoDate(body.deadline),
     applied_at: isoDate(body.applied_at),
     status,
-    priority: Math.min(5, Math.max(1, Number(body.priority) || 3)),
     description: text(body.description, 4000),
     notes: text(body.notes, 4000),
     screenshot,

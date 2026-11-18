@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { AddJobTrigger } from "./AddJobModal";
 import { Icon } from "./Icon";
 
 export function PageHeader({
@@ -10,7 +11,13 @@ export function PageHeader({
 }: {
   title: string;
   subtitle?: string;
-  action?: { href: string; label: string; icon?: "plus" | "camera" };
+  action?: {
+    href?: string;
+    label: string;
+    icon?: "plus" | "camera";
+    /** Open the add-job modal instead of navigating. */
+    modal?: boolean;
+  };
   eyebrow?: string;
 }) {
   return (
@@ -26,12 +33,18 @@ export function PageHeader({
           </p>
         )}
       </div>
-      {action && (
-        <Link href={action.href} className="btn btn-primary shrink-0">
-          <Icon name={action.icon ?? "plus"} size={14} />
-          {action.label}
-        </Link>
-      )}
+      {action &&
+        (action.modal ? (
+          <AddJobTrigger className="btn btn-primary shrink-0">
+            <Icon name={action.icon ?? "plus"} size={14} />
+            {action.label}
+          </AddJobTrigger>
+        ) : (
+          <Link href={action.href ?? "/"} className="btn btn-primary shrink-0">
+            <Icon name={action.icon ?? "plus"} size={14} />
+            {action.label}
+          </Link>
+        ))}
     </header>
   );
 }
@@ -44,7 +57,7 @@ export function EmptyState({
 }: {
   title: string;
   body: string;
-  cta?: { href: string; label: string };
+  cta?: { href?: string; label: string; modal?: boolean };
   icon?: "briefcase" | "grid" | "search";
 }) {
   return (
@@ -56,11 +69,14 @@ export function EmptyState({
       <p className="mt-1.5 max-w-sm text-[12.5px] leading-relaxed text-muted">
         {body}
       </p>
-      {cta && (
-        <Link href={cta.href} className="btn btn-primary mt-5">
-          {cta.label}
-        </Link>
-      )}
+      {cta &&
+        (cta.modal ? (
+          <AddJobTrigger className="btn btn-primary mt-5">{cta.label}</AddJobTrigger>
+        ) : (
+          <Link href={cta.href ?? "/"} className="btn btn-primary mt-5">
+            {cta.label}
+          </Link>
+        ))}
     </div>
   );
 }

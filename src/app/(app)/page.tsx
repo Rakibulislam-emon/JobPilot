@@ -1,4 +1,5 @@
 import { Icon } from "@/components/Icon";
+import { AddJobTrigger } from "@/components/AddJobModal";
 import { EmptyState, PageHeader, Section } from "@/components/Shell";
 import { StatusPill } from "@/components/StatusPill";
 import { STATUS_ORDER } from "@/lib/constants";
@@ -112,13 +113,21 @@ export default async function DashboardPage() {
 
   const maxStatus = Math.max(1, ...Object.values(byStatus));
   const today = new Date();
+  // Build the series from UTC parts and format with an explicit timezone.
+  // Mixing local `setDate` with UTC `toISOString` drifts by a day around
+  // midnight, which is exactly the kind of value that breaks hydration.
+  const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  const dateLabel = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
   const activitySeries = Array.from({ length: 30 }, (_, index) => {
-    const date = new Date(today);
-    date.setDate(today.getDate() - (29 - index));
+    const date = new Date(todayUtc - (29 - index) * 86_400_000);
     const key = date.toISOString().slice(0, 10);
     return {
       key,
-      label: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      label: dateLabel.format(date),
       count: jobs.filter((job) => job.created_at.slice(0, 10) === key).length,
     };
   });
@@ -147,12 +156,12 @@ export default async function DashboardPage() {
           eyebrow="Welcome"
           title={`Hello${user.email ? `, ${user.email.split("@")[0]}` : ""}`}
           subtitle="Your application pipeline starts here. Capture your first job post and we'll take it from there."
-          action={{ href: "/jobs/new", label: "Add first job" }}
+          action={{ label: "Add first job", modal: true }}
         />
         <EmptyState
           title="No jobs tracked yet"
           body="Add a job manually, or install the browser extension and capture any post — BDJobs, LinkedIn, or a Facebook group screenshot — in two clicks."
-          cta={{ href: "/jobs/new", label: "Add your first job" }}
+          cta={{ label: "Add your first job", modal: true }}
         />
         <div className="mt-6 grid gap-3 sm:grid-cols-3 stagger">
           {[
@@ -187,9 +196,9 @@ export default async function DashboardPage() {
             <Icon name="search" size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input name="q" placeholder="Search applications…" aria-label="Search applications" className="input pl-9 pr-3" />
           </form>
-          <Link href="/jobs/new" className="btn btn-primary w-full sm:w-auto">
+          <AddJobTrigger className="btn btn-primary w-full sm:w-auto">
             <Icon name="plus" size={14} /> Add job
-          </Link>
+          </AddJobTrigger>
         </div>
       </header>
 
@@ -374,7 +383,11 @@ function ActivityChart({ series }: { series: { key: string; label: string; count
       <polygon points={area} fill="url(#activity-fill)" />
       <polyline points={points} fill="none" stroke="#ededed" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
       {coords.map((point) => point.count > 0 ? (
-        <circle key={point.key} cx={point.x} cy={point.y} r="2.5" fill="#ededed"><title>{point.label}: {point.count} added</title></circle>
+        <circle key={point.key} cx={point.x} cy={point.y} r="2.5" fill="#ededed">
+          {/* One string keeps this a single text node — multiple children in
+              an SVG <title> can hydrate differently from the parsed HTML. */}
+          <title>{`${point.label}: ${point.count} added`}</title>
+        </circle>
       ) : null)}
       {labels.map((point) => <text key={point.key} x={point.x} y="196" textAnchor="middle" fill="#737373" fontSize="9">{point.label}</text>)}
     </svg>

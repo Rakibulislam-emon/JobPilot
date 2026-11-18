@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandMark, BrandName } from "@/components/Brand";
 import { LoginForm } from "@/components/LoginForm";
 import { Card, CardContent } from "@/components/ui/card";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -10,10 +11,8 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-[360px] animate-in">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 grid h-9 w-9 place-items-center rounded-lg border border-line-2 bg-surface-2">
-            <span className="h-2 w-2 rounded-full bg-accent" />
-          </div>
-          <h1 className="text-[17px] font-semibold tracking-tight text-fg">JobDesk</h1>
+          <BrandMark className="mb-4 size-10" />
+          <h1><BrandName className="text-[17px]" /></h1>
           <p className="mt-1 text-[12.5px] text-muted">Job application tracker</p>
         </div>
 

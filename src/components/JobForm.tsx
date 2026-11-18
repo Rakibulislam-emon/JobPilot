@@ -3,7 +3,14 @@
 import { saveJob } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PRIORITY_LABELS, SOURCES, STATUS_META, STATUS_ORDER } from "@/lib/constants";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { JOB_TYPES, SOURCES, STATUS_META, STATUS_ORDER } from "@/lib/constants";
 import { formatDateInput } from "@/lib/format";
 import { fileToDataUrl, ocrDataUrl } from "@/lib/image";
 import {
@@ -13,7 +20,9 @@ import {
 } from "@/lib/jobUrl";
 import type { Job, Status } from "@/lib/types";
 import Link from "next/link";
-import { useActionState, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { DeadlinePicker } from "./DeadlinePicker";
 import { Icon } from "./Icon";
 
 type Draft = {
@@ -36,28 +45,64 @@ type ScanState = {
   progress?: number;
 };
 
-export function JobForm({ job }: { job?: Job }) {
+export function JobForm({
+  job,
+  onCancel,
+  stickyActions = false,
+  idPrefix,
+}: {
+  job?: Job;
+  /** When provided, Cancel closes the surrounding dialog instead of navigating. */
+  onCancel?: () => void;
+  /** Pin the submit row to the bottom of a scrollable container (modal). */
+  stickyActions?: boolean;
+  /** Namespaces field ids so two forms can coexist on one page. */
+  idPrefix?: string;
+}) {
+  const fid = (name: string) => (idPrefix ? `${idPrefix}-${name}` : name);
   const formRef = useRef<HTMLFormElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
   const [confidence, setConfidence] = useState<Record<string, number>>({});
   const [scan, setScan] = useState<ScanState>({ busy: false });
-  const [postText, setPostText] = useState("");
+  const [postText, setPostText] = useState(() => {
+    const raw = job?.ai_meta?.raw_post;
+    return typeof raw === "string" ? raw : "";
+  });
+  const [deadline, setDeadline] = useState(() => formatDateInput(job?.deadline));
+  const [jobType, setJobType] = useState(job?.job_type || "full-time");
+  const [source, setSource] = useState(job?.source ?? "");
+  const [jobStatus, setJobStatus] = useState(job?.status ?? "saved");
   const [imagePreview, setImagePreview] = useState("");
 
   const [state, formAction, pending] = useActionState(
     async (_prev: { error?: string } | null, fd: FormData) => {
       const result = await saveJob(fd);
-      return (result as { error?: string } | undefined) ?? null;
+      return (result as { error?: string; ok?: boolean } | undefined) ?? null;
     },
     null
   );
 
+  useEffect(() => {
+    if (!state?.ok) return;
+    onCancel?.();
+    router.refresh();
+  }, [onCancel, router, state]);
+
   function setField(name: string, value: string, overwrite = false) {
     if (!value) return;
+    if (name === "deadline") {
+      setDeadline(value);
+      return;
+    }
     const form = formRef.current;
     if (!form) return;
     const el = form.elements.namedItem(name);
-    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+    if (
+      el instanceof HTMLInputElement ||
+      el instanceof HTMLTextAreaElement ||
+      el instanceof HTMLSelectElement
+    ) {
       if (!overwrite && el.value.trim()) return;
       el.value = value;
       el.dispatchEvent(new Event("input", { bubbles: true }));
@@ -87,10 +132,12 @@ export function JobForm({ job }: { job?: Job }) {
       let res;
       if (text.trim().length > 20) {
         usedOcr = true;
-        setPostText(text.trim());
-        setField("url", extractJobUrl(text));
+        // Prefer the clean text the user pasted. OCR text is only a fallback —
+        // never overwrite the pasted post, which we keep verbatim.
+        const parseText = postText.trim() ? postText : text;
+        setField("url", extractJobUrl(parseText));
         res = await postParse({
-          text,
+          text: parseText,
           image: dataUrl,
           url: getField("url"),
           title: getField("title"),
@@ -194,11 +241,8 @@ export function JobForm({ job }: { job?: Job }) {
     setField("salary", d.salary);
     setField("deadline", d.deadline, true);
     setField("description", d.description, true);
-    setField("job_type", d.job_type, true);
-    if (d.source) {
-      const sel = formRef.current?.elements.namedItem("source");
-      if (sel instanceof HTMLSelectElement && !sel.value) sel.value = d.source;
-    }
+    if (d.job_type) setJobType(d.job_type);
+    if (d.source && !source) setSource(d.source);
   }
 
   const conf = (name: string) => confidence[name];
@@ -239,17 +283,24 @@ export function JobForm({ job }: { job?: Job }) {
     <>
       <form ref={formRef} action={formAction} className="space-y-4">
         {job?.id && <input type="hidden" name="id" defaultValue={job.id} />}
+        {onCancel && <input type="hidden" name="modal_form" value="true" />}
         {job?.screenshot && (
           <input type="hidden" name="screenshot" defaultValue={job.screenshot} />
         )}
         <input type="hidden" name="description" defaultValue={job?.description ?? ""} />
-        <input type="hidden" name="job_type" defaultValue={job?.job_type ?? ""} />
         <input type="hidden" name="applied_at" defaultValue={formatDateInput(job?.applied_at)} />
+        {/* Preserve the original pasted post verbatim for future re-extraction. */}
+        <input type="hidden" name="raw_post" value={postText} />
+        <input
+          type="hidden"
+          name="ai_meta"
+          value={job?.ai_meta ? JSON.stringify(job.ai_meta) : ""}
+        />
 
         <div className="card p-4">
-          <Label htmlFor="url">Apply link or contact</Label>
+          <Label htmlFor={fid("url")}>Apply link or contact</Label>
           <Input
-            id="url"
+            id={fid("url")}
             name="url"
             type="text"
             defaultValue={job?.url ?? ""}
@@ -266,19 +317,22 @@ export function JobForm({ job }: { job?: Job }) {
           tabIndex={0}
           aria-label="Screenshot upload area. Paste a copied image here."
         >
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-line-2 bg-surface-2">
-              <Icon name="sparkles" size={16} className="text-muted" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-medium">Add a post screenshot</div>
-              <div className="text-[11px] text-muted">
-                Take or upload a screenshot, or copy an image and paste it here. You can also paste post text below.
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-line-2 bg-surface-2">
+                <Icon name="sparkles" size={16} className="text-muted" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] font-medium">Add a post screenshot</div>
+                <div className="text-[11px] text-muted">
+                  Take or upload a screenshot, or copy an image and paste it here. You can also paste post text below.
+                </div>
               </div>
             </div>
             <Button
               type="button"
               variant="outline"
+              className="w-full sm:w-auto"
               onClick={() => fileRef.current?.click()}
               disabled={scan.busy}
             >
@@ -310,9 +364,9 @@ export function JobForm({ job }: { job?: Job }) {
             Copy an image, then tap/click this card and paste it here.
           </div>
 
-          <label htmlFor="post-text" className="label mt-4">Or paste the job post text</label>
+          <label htmlFor={fid("post-text")} className="label mt-4">Or paste the job post text</label>
           <textarea
-            id="post-text"
+            id={fid("post-text")}
             value={postText}
             onChange={(event) => setPostText(event.target.value)}
             onPaste={handlePostPaste}
@@ -363,11 +417,11 @@ export function JobForm({ job }: { job?: Job }) {
         <div className="card p-4">
           <div className="grid gap-3.5 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <Label htmlFor="title" field="title">
+              <Label htmlFor={fid("title")} field="title">
                 Role / position
               </Label>
               <Input
-                id="title"
+                id={fid("title")}
                 name="title"
                 defaultValue={job?.title ?? ""}
                 placeholder="e.g. Management Trainee Officer"
@@ -375,11 +429,11 @@ export function JobForm({ job }: { job?: Job }) {
             </div>
 
             <div>
-              <Label htmlFor="company" field="company">
+              <Label htmlFor={fid("company")} field="company">
                 Company
               </Label>
               <Input
-                id="company"
+                id={fid("company")}
                 name="company"
                 defaultValue={job?.company ?? ""}
                 placeholder="e.g. Grameenphone"
@@ -387,11 +441,11 @@ export function JobForm({ job }: { job?: Job }) {
             </div>
 
             <div>
-              <Label htmlFor="location" field="location">
+              <Label htmlFor={fid("location")} field="location">
                 Location
               </Label>
               <Input
-                id="location"
+                id={fid("location")}
                 name="location"
                 defaultValue={job?.location ?? ""}
                 placeholder="Dhaka"
@@ -399,11 +453,11 @@ export function JobForm({ job }: { job?: Job }) {
             </div>
 
             <div>
-              <Label htmlFor="salary" field="salary">
+              <Label htmlFor={fid("salary")} field="salary">
                 Salary
               </Label>
               <Input
-                id="salary"
+                id={fid("salary")}
                 name="salary"
                 defaultValue={job?.salary ?? ""}
                 placeholder="25,000 – 35,000 BDT"
@@ -411,73 +465,93 @@ export function JobForm({ job }: { job?: Job }) {
             </div>
 
             <div>
-              <Label htmlFor="source" field="source">
-                Source
-              </Label>
-              <select
-                id="source"
-                name="source"
-                defaultValue={job?.source ?? ""}
-                className="input"
-              >
-                <option value="">Not set</option>
-                {SOURCES.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
+              <Label htmlFor={fid("job_type")}>Employment type</Label>
+              <input type="hidden" name="job_type" value={jobType} />
+              <Select value={jobType} onValueChange={(value) => setJobType(value ?? "")}>
+                <SelectTrigger id={fid("job_type")} className="h-9 w-full text-[12.5px]">
+                  <SelectValue>
+                    {(value) =>
+                      JOB_TYPES.find((type) => type.value === value)?.label ?? String(value ?? "")
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {job?.job_type && !JOB_TYPES.some((type) => type.value === job.job_type) && (
+                    <SelectItem value={job.job_type}>{job.job_type}</SelectItem>
+                  )}
+                  {JOB_TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
-              <Label htmlFor="deadline" field="deadline">
+              <Label htmlFor={fid("source")} field="source">
+                Source
+              </Label>
+              <input type="hidden" name="source" value={source} />
+              <Select
+                value={source || "__none__"}
+                onValueChange={(value) => setSource(value === "__none__" ? "" : (value ?? ""))}
+              >
+                <SelectTrigger id={fid("source")} className="h-9 w-full text-[12.5px]">
+                  <SelectValue>
+                    {(value) =>
+                      value === "__none__"
+                        ? "Not set"
+                        : SOURCES.find((item) => item.value === value)?.label ?? "Not set"
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Not set</SelectItem>
+                  {SOURCES.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor={fid("deadline")} field="deadline">
                 Application deadline
               </Label>
-              <Input
-                id="deadline"
+              <DeadlinePicker
+                id={fid("deadline")}
                 name="deadline"
-                type="date"
-                defaultValue={formatDateInput(job?.deadline)}
-                
+                value={deadline}
+                onChange={setDeadline}
               />
             </div>
 
             <div>
-              <Label htmlFor="status">Status</Label>
-              <select
-                id="status"
-                name="status"
-                defaultValue={job?.status ?? "saved"}
-                className="input"
-              >
-                {STATUS_ORDER.map((s: Status) => (
-                  <option key={s} value={s}>
-                    {STATUS_META[s].label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <Label htmlFor="priority">Priority</Label>
-              <select
-                id="priority"
-                name="priority"
-                defaultValue={String(job?.priority ?? 3)}
-                className="input"
-              >
-                {[1, 2, 3, 4, 5].map((p) => (
-                  <option key={p} value={p}>
-                    {p} · {PRIORITY_LABELS[p]}
-                  </option>
-                ))}
-              </select>
+              <Label htmlFor={fid("status")}>Status</Label>
+              <input type="hidden" name="status" value={jobStatus} />
+              <Select value={jobStatus} onValueChange={(value) => setJobStatus((value ?? "saved") as Status)}>
+                <SelectTrigger id={fid("status")} className="h-9 w-full text-[12.5px]">
+                  <SelectValue>
+                    {(value) => STATUS_META[value as Status]?.label ?? "Saved"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_ORDER.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {STATUS_META[option].label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="sm:col-span-2">
-              <Label htmlFor="notes">Private notes</Label>
+              <Label htmlFor={fid("notes")}>Private notes</Label>
               <textarea
-                id="notes"
+                id={fid("notes")}
                 name="notes"
                 defaultValue={job?.notes ?? ""}
                 rows={3}
@@ -494,16 +568,28 @@ export function JobForm({ job }: { job?: Job }) {
           </p>
         )}
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div
+          className={
+            stickyActions
+              ? "sticky bottom-0 z-10 -mx-4 mt-1 flex flex-wrap items-center gap-2 border-t border-line bg-bg/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:-mx-6 sm:px-6"
+              : "flex flex-wrap items-center gap-2"
+          }
+        >
           <Button type="submit" size="lg" disabled={pending || scan.busy}>
             {pending ? "Saving…" : job?.id ? "Save changes" : "Add job"}
           </Button>
-          <Link
-            href={job?.id ? `/jobs/${job.id}` : "/jobs"}
-            className="btn btn-ghost h-9"
-          >
-            Cancel
-          </Link>
+          {onCancel ? (
+            <button type="button" onClick={onCancel} className="btn btn-ghost h-9">
+              Cancel
+            </button>
+          ) : (
+            <Link
+              href={job?.id ? `/jobs/${job.id}` : "/jobs"}
+              className="btn btn-ghost h-9"
+            >
+              Cancel
+            </Link>
+          )}
           {job?.url && (
             <a
               href={getApplicationHref(job.url) ?? undefined}

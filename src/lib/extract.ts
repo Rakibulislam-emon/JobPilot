@@ -26,7 +26,7 @@ type ProviderConfig = {
 };
 
 const AI_BUDGET_MS = 42_000;
-const AI_REQUEST_TIMEOUT_MS = 12_000;
+const AI_REQUEST_TIMEOUT_MS = 20_000;
 
 /** "a, b, c" or "a" → ["a","b","c"], falling back to the defaults. */
 function modelList(envValue: string | undefined, defaults: string[]): string[] {
@@ -34,25 +34,24 @@ function modelList(envValue: string | undefined, defaults: string[]): string[] {
     .split(",")
     .map((m) => m.trim())
     .filter(Boolean);
-  return custom.length > 0 ? [...custom, ...defaults] : defaults;
+  const merged = custom.length > 0 ? [...custom, ...defaults] : defaults;
+  return [...new Set(merged)];
 }
 
 export function configuredProviders(savedKeys: AiProviderKeys = {}): ProviderConfig[] {
   const candidates: ProviderConfig[] = [
     {
-      id: "gemini",
-      label: "Gemini",
-      baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
-      apiKey: savedKeys.gemini || GEMINI_API_KEY,
-      models: modelList(process.env.GEMINI_MODEL, [
-        "gemini-flash-latest",
-        "gemini-3-flash-preview",
-        "gemini-3.1-flash-lite",
+      id: "groq",
+      label: "Groq",
+      baseUrl: "https://api.groq.com/openai/v1",
+      apiKey: savedKeys.groq || GROQ_API_KEY,
+      models: modelList(process.env.GROQ_MODEL, [
+        "qwen/qwen3.8-27b",
+        "openai/gpt-oss-20b",
+        "openai/gpt-oss-120b",
       ]),
-      visionModels: modelList(process.env.GEMINI_MODEL, [
-        "gemini-flash-latest",
-        "gemini-3-flash-preview",
-        "gemini-3.1-flash-lite",
+      visionModels: modelList(process.env.GROQ_VISION_MODEL, [
+        "qwen/qwen3.8-27b",
       ]),
       supportsJsonMode: true,
     },
@@ -75,16 +74,19 @@ export function configuredProviders(savedKeys: AiProviderKeys = {}): ProviderCon
       supportsJsonMode: true,
     },
     {
-      id: "groq",
-      label: "Groq",
-      baseUrl: "https://api.groq.com/openai/v1",
-      apiKey: savedKeys.groq || GROQ_API_KEY,
-      models: modelList(process.env.GROQ_MODEL, [
-        "meta-llama/llama-4-scout-17b-16e-instruct",
-        "llama-3.3-70b-versatile",
+      id: "gemini",
+      label: "Gemini",
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+      apiKey: savedKeys.gemini || GEMINI_API_KEY,
+      models: modelList(process.env.GEMINI_MODEL, [
+        "gemini-flash-latest",
+        "gemini-3-flash-preview",
+        "gemini-3.1-flash-lite",
       ]),
-      visionModels: modelList(process.env.GROQ_VISION_MODEL, [
-        "meta-llama/llama-4-scout-17b-16e-instruct",
+      visionModels: modelList(process.env.GEMINI_MODEL, [
+        "gemini-flash-latest",
+        "gemini-3-flash-preview",
+        "gemini-3.1-flash-lite",
       ]),
       supportsJsonMode: true,
     },
@@ -445,6 +447,17 @@ function cleanJobTitleCandidate(value: string): string {
 }
 
 function extractJobTitle(lines: string[], pageTitle?: string): { title: string; confidence: number } {
+  // Hiring phrases: "We are hiring an HR Officer at PRAN Group." / "Vacancy for Accountant"
+  for (const line of lines) {
+    const m = line.match(/(?:hiring|recruiting|vacancy\s+for|required\s+for|looking\s+for|position\s+of)\s*(?:an?\s+|for\s+)?(.+?)(?=\s+(?:at|@|in|with|,|\.|$))/i);
+    if (m) {
+      const value = cleanJobTitleCandidate(m[1]);
+      if (value.length >= 3 && value.split(/\\s+/).length <= 8 && !SITE_NAMES.test(value)) {
+        return { title: value, confidence: 0.78 };
+      }
+    }
+  }
+
   for (let i = 0; i < lines.length; i++) {
     const match = TITLE_LABEL.exec(lines[i]);
     if (!match) continue;
@@ -484,11 +497,11 @@ function extractJobTitle(lines: string[], pageTitle?: string): { title: string; 
 
 function mergeLocalDraft(ai: Draft, local: Draft): Draft {
   const merged = { ...ai };
-  if (local.title && local.confidence.title >= 0.7) merged.title = local.title;
+  if (!merged.title && local.title) merged.title = local.title;
   if (!merged.company) merged.company = local.company;
   if (!merged.location) merged.location = local.location;
   if (!merged.salary) merged.salary = local.salary;
-  if (local.deadline) merged.deadline = local.deadline;
+  if (!merged.deadline && local.deadline) merged.deadline = local.deadline;
   if (!merged.job_type) merged.job_type = local.job_type;
   if (!merged.source) merged.source = local.source;
   if (!merged.description) merged.description = local.description;
@@ -546,16 +559,33 @@ export function heuristicParse(input: ParseInput): Draft {
   const emailMatch = flat.match(/[\w.+-]+@[\w-]+\.[\w.]{2,}/);
   const phoneMatch = flat.match(/(?:\+?880|0)1[3-9]\d{8}/);
 
-  const salaryLine = flat.match(
-    /(?:salary|consolidated|stipend|remuneration|বেতন)\s*[:\-–]?\s*((?:BDT|Tk\.?|৳|টাকা)?\s*[\d০-৯,]{3,}(?:\s*(?:-|–|to)\s*[\d০-৯,]{3,})?\s*(?:BDT|Tk\.?|৳|টাকা)?(?:\s*(?:per month|\/month|monthly))?)/i
+  // Salary — try a labelled line first so shorthand like "10K-12K Basic + …"
+  // survives intact. The old numeric-only pattern required 3+ digits and
+  // silently missed K-suffixed ranges common in Bangladeshi job posts.
+  const salaryLineIndex = lines.findIndex((l) =>
+    /(?:salary|basic\s*salary|consolidated|stipend|remuneration|বেতন)\s*[:\-–]/iu.test(l)
   );
-  if (salaryLine) {
-    draft.salary = salaryLine[1].replace(/\s+/g, " ").trim().slice(0, 120);
+  const salaryFromLine =
+    salaryLineIndex >= 0
+      ? lines[salaryLineIndex].match(
+          /(?:salary|basic\s*salary|consolidated|stipend|remuneration|বেতন)\s*[:\-–]\s*(.+)$/iu
+        )?.[1]
+      : undefined;
+
+  if (salaryFromLine) {
+    draft.salary = salaryFromLine.replace(/\s+/g, " ").trim().slice(0, 160);
   } else {
-    const money = flat.match(
-      /(?:BDT|Tk\.?|৳|টাকা)\s*[\d০-৯,]{3,}(?:\s*(?:-|–|to)\s*[\d০-৯,]{3,})?/i
+    const salaryInline = flat.match(
+      /(?:salary|consolidated|stipend|remuneration|বেতন)\s*[:\-–]?\s*((?:BDT|Tk\.?|৳|টাকা)?\s*(?:\d{1,3}(?:,\d{3})+|\d+|[০-৯]{1,3})\s*[kK]?(?:\s*(?:-|–|to)\s*(?:BDT|Tk\.?|৳|টাকা)?\s*(?:\d{1,3}(?:,\d{3})+|\d+|[০-৯]{1,3})\s*[kK]?)?(?:\s*(?:BDT|Tk\.?|৳|টাকা))?(?:\s*(?:per month|\/month|monthly))?)/i
     );
-    if (money) draft.salary = money[0].trim().slice(0, 120);
+    if (salaryInline) {
+      draft.salary = salaryInline[1].replace(/\s+/g, " ").trim().slice(0, 160);
+    } else {
+      const money = flat.match(
+        /(?:BDT|Tk\.?|৳|টাকা)\s*(?:\d{1,3}(?:,\d{3})+|\d+|[০-৯]{1,3})\s*[kK]?(?:\s*(?:-|–|to)\s*(?:\d{1,3}(?:,\d{3})+|\d+|[০-৯]{1,3})\s*[kK]?)?/i
+      );
+      if (money) draft.salary = money[0].trim().slice(0, 120);
+    }
   }
 
   const deadlineResult = findDeadline(lines, flat);

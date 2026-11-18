@@ -1,4 +1,4 @@
-import type { Status } from "./types";
+import type { QuestionStatus, Status } from "./types";
 
 export const STATUS_ORDER: Status[] = [
   "saved",
@@ -99,10 +99,32 @@ export const JOB_TYPES = [
   { value: "remote", label: "Remote" },
 ];
 
-export const PRIORITY_LABELS: Record<number, string> = {
-  1: "Dream",
-  2: "High",
-  3: "Normal",
-  4: "Low",
-  5: "Just looking",
+export const QUESTION_STATUS_ORDER: QuestionStatus[] = ["missed", "shaky", "solid"];
+
+export const QUESTION_STATUS_META: Record<
+  QuestionStatus,
+  { label: string; short: string; dot: string; pill: string }
+> = {
+  missed: {
+    label: "To review",
+    short: "New",
+    dot: "bg-slate-400",
+    pill: "border-line-2 bg-surface-2 text-fg-2",
+  },
+  shaky: {
+    label: "Shaky",
+    short: "Shaky",
+    dot: "bg-warn",
+    pill: "border-warn/25 bg-warn-soft text-warn",
+  },
+  solid: {
+    label: "Answered well",
+    short: "Solid",
+    dot: "bg-success",
+    pill: "border-success/25 bg-success-soft text-success",
+  },
 };
+
+export function isQuestionStatus(value: string): value is QuestionStatus {
+  return (QUESTION_STATUS_ORDER as string[]).includes(value);
+}

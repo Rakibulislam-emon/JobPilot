@@ -2,27 +2,35 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { BrandMark, BrandName } from "./Brand";
 import { Icon } from "./Icon";
+import {
+  Sidebar as SidebarPrimitive,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+  useSidebar,
+} from "@/components/ui/sidebar";
 
 const NAV = [
-  { href: "/", label: "Dashboard", icon: "grid" as const, key: "D" },
-  { href: "/jobs", label: "Jobs", icon: "briefcase" as const, key: "J" },
-  { href: "/board", label: "Board", icon: "columns" as const, key: "B" },
-  { href: "/jobs/new", label: "Add job", icon: "plus" as const, key: "N" },
-  { href: "/settings", label: "Settings", icon: "settings" as const, key: "S" },
+  { href: "/", label: "Dashboard", icon: "grid" as const },
+  { href: "/jobs", label: "Jobs", icon: "briefcase" as const },
+  { href: "/board", label: "Board", icon: "columns" as const },
+  { href: "/prep", label: "Prep", icon: "note" as const },
+  { href: "/settings", label: "Settings", icon: "settings" as const },
 ];
 
 function isActive(href: string, pathname: string) {
   if (href === "/") return pathname === "/";
-  if (href === "/jobs/new") return pathname === "/jobs/new";
-  if (href === "/jobs") {
-    // /jobs and /jobs/[id] — but not /jobs/new
-    return (
-      pathname === "/jobs" ||
-      (pathname.startsWith("/jobs/") && !pathname.startsWith("/jobs/new"))
-    );
-  }
+  if (href === "/jobs") return pathname === "/jobs" || pathname.startsWith("/jobs/");
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -32,34 +40,13 @@ interface SidebarProps {
 
 export function Sidebar({ email }: SidebarProps) {
   const pathname = usePathname();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { setOpenMobile } = useSidebar();
 
-  // Lock body scroll while the mobile drawer is open
+  // Close the mobile sheet whenever the route changes
+  // (covers back/forward and programmatic navigation).
   useEffect(() => {
-    if (!mobileMenuOpen) return;
-    const original = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = original;
-    };
-  }, [mobileMenuOpen]);
-
-  // Close on Escape
-  useEffect(() => {
-    if (!mobileMenuOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMobileMenuOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [mobileMenuOpen]);
-
-  // Close whenever the route changes (covers back/forward, programmatic nav)
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [pathname]);
-
-  const handleNavClick = () => setMobileMenuOpen(false);
+    setOpenMobile(false);
+  }, [pathname, setOpenMobile]);
 
   return (
     <>
@@ -70,113 +57,76 @@ export function Sidebar({ email }: SidebarProps) {
           className="flex min-w-0 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           aria-label="JobDesk dashboard"
         >
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-line-2 bg-surface-2 text-fg">
-            <Icon name="briefcase" size={15} />
-          </span>
-          <span className="truncate text-[14px] font-semibold tracking-tight text-fg">JobDesk</span>
+          <BrandMark className="size-8" />
+          <BrandName className="truncate text-[14px]" />
         </Link>
         <button
           type="button"
-          onClick={() => setMobileMenuOpen(true)}
+          onClick={() => setOpenMobile(true)}
           className="flex h-10 w-10 items-center justify-center rounded-lg text-muted transition hover:bg-surface-2 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           aria-label="Open menu"
-          aria-expanded={mobileMenuOpen}
           aria-controls="app-sidebar"
         >
           <Icon name="menu" size={20} />
         </button>
       </div>
 
-      {/* Mobile overlay */}
-      <div
-        aria-hidden={!mobileMenuOpen}
-        onClick={() => setMobileMenuOpen(false)}
-        className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity duration-300 md:hidden ${
-          mobileMenuOpen
-            ? "pointer-events-auto opacity-100"
-            : "pointer-events-none opacity-0"
-        }`}
-      />
-
-      {/* Sidebar */}
-      <aside
-        id="app-sidebar"
-        aria-label="Primary"
-        className={`fixed left-0 top-0 z-50 flex h-dvh w-72 max-w-[85vw] flex-col border-r border-line bg-bg shadow-2xl transition-transform duration-300 ease-in-out motion-reduce:transition-none md:static md:w-60 md:shrink-0 md:max-w-none md:translate-x-0 md:shadow-none ${
-          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        {/* Mobile close button */}
-        <button
-          type="button"
-          onClick={() => setMobileMenuOpen(false)}
-          className="absolute right-2 top-2 flex items-center justify-center rounded-md p-2 text-muted transition-colors hover:bg-surface-2 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent md:hidden"
-          aria-label="Close menu"
-        >
-          <Icon name="close" size={18} />
-        </button>
-
+      <SidebarPrimitive id="app-sidebar" aria-label="Primary" collapsible="icon">
         {/* Brand */}
-        <Link
-          href="/"
-          onClick={handleNavClick}
-          aria-label="JobDesk dashboard"
-          className="flex items-center gap-2.5 px-4 py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent sm:px-5 sm:py-5"
-        >
-          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-line-2 bg-surface-2 text-fg">
-            <Icon name="briefcase" size={15} />
-          </div>
-          <div className="min-w-0 leading-tight">
-            <div className="truncate text-[13.5px] font-semibold tracking-tight text-fg">
-              JobDesk
-            </div>
-            <div className="truncate text-[10.5px] text-muted-2">
-              application tracker
-            </div>
-          </div>
-        </Link>
+        <SidebarHeader className="gap-0 border-b border-sidebar-border px-2 py-3">
+          <Link
+            href="/"
+            onClick={() => setOpenMobile(false)}
+            aria-label="JobDesk dashboard"
+            className="group/brand flex min-w-0 items-center gap-2.5 rounded-lg px-1 py-1 transition-colors hover:bg-sidebar-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+          >
+            <BrandMark className="size-8" />
+            <span className="min-w-0 leading-tight group-data-[collapsible=icon]/brand:hidden">
+              <BrandName className="block truncate text-[13.5px]" />
+              <span className="mt-0.5 block truncate text-[9px] font-medium uppercase tracking-[0.13em] text-muted-2">
+                Application tracker
+              </span>
+            </span>
+          </Link>
+        </SidebarHeader>
 
-        {/* Nav */}
-        <nav aria-label="Workspace" className="flex flex-1 flex-col overflow-y-auto px-3 pb-3">
-          <div className="mb-2 mt-4 hidden px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-2 md:block">
-            Workspace
-          </div>
-          <div className="flex flex-col gap-1">
-          {NAV.map((item) => {
-            const active = isActive(item.href, pathname);
+        {/* Navigation */}
+        <SidebarContent className="gap-0">
+          <SidebarGroup className="px-2 py-3">
+            <SidebarGroupLabel className="mb-1 px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-2">
+              Workspace
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-1">
+                {NAV.map((item) => {
+                  const active = isActive(item.href, pathname);
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        render={<Link href={item.href} onClick={() => setOpenMobile(false)} />}
+                        isActive={active}
+                        tooltip={item.label}
+                        aria-current={active ? "page" : undefined}
+                        className="relative min-h-10 gap-3 rounded-lg px-2.5 text-[12.5px] data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground data-[active=true]:before:absolute data-[active=true]:before:inset-y-2 data-[active=true]:before:left-0 data-[active=true]:before:w-0.5 data-[active=true]:before:rounded-full data-[active=true]:before:bg-accent"
+                      >
+                        <Icon
+                          name={item.icon}
+                          size={15}
+                          className={active ? "text-fg" : "text-muted-2"}
+                        />
+                        <span className="flex-1 truncate">{item.label}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={handleNavClick}
-                aria-current={active ? "page" : undefined}
-                className={`group relative flex min-h-10 items-center gap-3 rounded-lg px-2.5 py-2 text-[12.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                  active
-                    ? "bg-surface-2 font-medium text-fg before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-fg"
-                    : "text-muted hover:bg-surface-2/60 hover:text-fg"
-                }`}
-              >
-                <Icon
-                  name={item.icon}
-                  size={15}
-                  className={
-                    active ? "text-fg" : "text-muted-2 group-hover:text-muted"
-                  }
-                />
-                <span className="flex-1 truncate">{item.label}</span>
-                <kbd className="hidden rounded border border-line-2 px-1.5 py-0.5 text-[10px] text-muted-2 md:inline-block">
-                  {item.key}
-                </kbd>
-              </Link>
-            );
-          })}
-          </div>
-        </nav>
-
-        {/* Footer */}
-        <div className="mt-auto border-t border-line p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <div className="mb-2 flex items-center gap-2.5 rounded-lg border border-line bg-surface px-2.5 py-2.5">
+        {/* Account */}
+        <SidebarFooter className="gap-0 border-t border-sidebar-border p-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="mb-1 flex items-center gap-2.5 rounded-lg border border-line bg-surface px-2.5 py-2.5 group-data-[collapsible=icon]:hidden">
             <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-line-2 bg-surface-2 text-[11px] font-medium text-fg">
               {email.charAt(0).toUpperCase()}
             </div>
@@ -188,16 +138,19 @@ export function Sidebar({ email }: SidebarProps) {
             </div>
           </div>
           <form action="/auth/signout" method="post">
-            <button
+            <SidebarMenuButton
               type="submit"
-              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[12.5px] text-muted transition-colors hover:bg-surface-2/60 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              tooltip="Sign out"
+              className="w-full gap-2.5 text-[12.5px] text-muted hover:text-fg"
             >
               <Icon name="logout" size={14} />
-              Sign out
-            </button>
+              <span>Sign out</span>
+            </SidebarMenuButton>
           </form>
-        </div>
-      </aside>
+        </SidebarFooter>
+
+        <SidebarRail />
+      </SidebarPrimitive>
 
       {/* Primary mobile navigation keeps page switching one tap away */}
       <nav
@@ -211,7 +164,7 @@ export function Sidebar({ email }: SidebarProps) {
               key={item.href}
               href={item.href}
               aria-current={active ? "page" : undefined}
-              onClick={handleNavClick}
+              onClick={() => setOpenMobile(false)}
               className={`flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2.5 text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
                 active ? "text-fg" : "text-muted hover:text-fg"
               }`}
