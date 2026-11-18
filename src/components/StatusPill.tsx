@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { STATUS_META } from "@/lib/constants";
 import type { Status } from "@/lib/types";
 
@@ -10,13 +11,14 @@ export function StatusPill({
 }) {
   const meta = STATUS_META[status] ?? STATUS_META.saved;
   return (
-    <span
-      className={`pill ${meta.pill} ${
-        size === "md" ? "px-2.5 py-1 text-[11.5px]" : ""
+    <Badge
+      variant="secondary"
+      className={`gap-1.5 font-normal text-fg-2 ${
+        size === "md" ? "h-6 px-2.5 text-[11.5px]" : "text-[11px]"
       }`}
     >
-      <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+      <span className={`size-1.5 rounded-full ${meta.dot}`} />
       {meta.label}
-    </span>
+    </Badge>
   );
 }

@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
 import { authorizeApi } from "@/lib/apiAuth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { isValidApplicationLink } from "@/lib/jobUrl";
 import { uploadScreenshot } from "@/lib/storage";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -41,14 +42,20 @@ export async function POST(req: Request) {
 
   const company = text(body.company, 120);
   const title = text(body.title, 160);
-  if (!company && !title) {
+  const url = text(body.url, 1000);
+  if (!company && !title && !url) {
     return NextResponse.json(
-      { error: "A company or job title is required." },
+      { error: "Add a job link, role, or company before saving." },
+      { status: 400 }
+    );
+  }
+  if (url && !isValidApplicationLink(url)) {
+    return NextResponse.json(
+      { error: "Job link must be a valid URL, email address, or WhatsApp number." },
       { status: 400 }
     );
   }
 
-  const url = text(body.url, 1000);
   const statusRaw = text(body.status, 20) || "saved";
   const status = ALLOWED_STATUS.includes(statusRaw) ? statusRaw : "saved";
   const admin = createAdminClient();
@@ -89,7 +96,6 @@ export async function POST(req: Request) {
     deadline: isoDate(body.deadline),
     applied_at: isoDate(body.applied_at),
     status,
-    priority: Math.min(5, Math.max(1, Number(body.priority) || 3)),
     description: text(body.description, 4000),
     notes: text(body.notes, 4000),
     screenshot,

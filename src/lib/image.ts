@@ -41,7 +41,7 @@ export async function ocrDataUrl(
   onProgress?: (pct: number) => void
 ): Promise<string> {
   const { createWorker } = await import("tesseract.js");
-  const worker = await createWorker("eng", 1, {
+  const worker = await createWorker("eng+ben", 1, {
     logger: (m: { status: string; progress: number }) => {
       if (m.status === "recognizing text") {
         onProgress?.(Math.round(m.progress * 100));

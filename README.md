@@ -1,5 +1,7 @@
 # JobDesk
 
+> **Resuming a session?** Read [`PROGRESS.md`](PROGRESS.md) first — it has the current branch, done/remaining work, env status, and known issues.
+
 A personal **job application tracker** with a browser extension that captures any job post —
 BDJobs, LinkedIn, a Facebook group screenshot — and files it for you.
 
@@ -74,6 +76,17 @@ npm run check
 ```
 
 It pings Supabase and Gemini and prints exactly what is missing.
+
+### Add AI keys from Settings
+
+The signed-in **Settings → AI provider API keys** panel stores provider keys encrypted
+on the server. To enable it, generate a random 32-byte hex secret and set it as
+`AI_KEYS_ENCRYPTION_KEY` in `.env.local` (and in your hosting environment). Keep this
+secret stable and backed up; changing it makes saved keys unreadable. Run
+[`supabase/ai_provider_keys.sql`](supabase/ai_provider_keys.sql) once in Supabase SQL
+Editor, then restart/redeploy. Add Gemini, OpenRouter, and/or Groq keys in Settings.
+Provider keys are never returned to the browser. Clear text extraction still works
+without AI; free-provider quotas and availability are not guaranteed.
 
 ---
 

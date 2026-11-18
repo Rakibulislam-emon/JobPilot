@@ -1,23 +1,93 @@
-import Link from "next/link";
+import { AddJobTrigger } from "@/components/AddJobModal";
 import { Icon } from "@/components/Icon";
-import { PageHeader } from "@/components/Shell";
+import { JobsFilterBar } from "@/components/JobsFilterBar";
+import {
+  BulkJobActions,
+  JobCheckbox,
+  JobsSelectionProvider,
+  SelectAllCheckbox,
+} from "@/components/JobsSelection";
 import { StatusPill } from "@/components/StatusPill";
-import { SOURCES, STATUS_META, STATUS_ORDER } from "@/lib/constants";
-import { createClient, requireUser } from "@/lib/supabase/server";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { SOURCES, STATUS_ORDER } from "@/lib/constants";
 import { daysUntil, formatDate, relativeTime } from "@/lib/format";
+import { createClient, requireUser } from "@/lib/supabase/server";
 import type { Job } from "@/lib/types";
+import { cn } from "cn";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
+const PAGE_SIZE = 50;
+
+/** Columns the free-text search looks at. */
+const SEARCH_COLUMNS = [
+  "company",
+  "title",
+  "location",
+  "job_type",
+  "salary",
+  "notes",
+  "description",
+  "url",
+] as const;
+
+type FilterChain = {
+  eq(column: string, value: string): FilterChain;
+  or(filters: string): FilterChain;
+};
+
+/**
+ * Splits the search box into safe words. PostgREST syntax characters
+ * (`,`, `(`, `)`, `%`, `*`) can never reach the query string this way.
+ */
+function searchTokens(raw: string): string[] {
+  return raw
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean)
+    .slice(0, 5);
+}
+
+/**
+ * Owner scope + free-text search + dropdown filters.
+ * Words are AND-ed (all must match), columns are OR-ed (any column may match),
+ * so "Data Entry (Night Shift)" still finds the job.
+ */
+function applyFilters<T>(
+  query: T,
+  userId: string,
+  tokens: string[],
+  status: string,
+  source: string
+): T {
+  let next = query as unknown as FilterChain;
+  next = next.eq("user_id", userId);
+  for (const token of tokens) {
+    next = next.or(
+      SEARCH_COLUMNS.map((column) => `${column}.ilike.%${token}%`).join(",")
+    );
+  }
+  if (status) next = next.eq("status", status);
+  if (source) next = next.eq("source", source);
+  return next as unknown as T;
+}
+
+/** `?q=a&q=b` arrives as an array — keep the last value so the page never crashes. */
+function param(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) return value[value.length - 1] ?? "";
+  return value ?? "";
+}
+
 function DeadlineCell({ job }: { job: Job }) {
-  if (!job.deadline) return <span className="text-muted/50">—</span>;
+  if (!job.deadline) return <span className="text-muted-2">—</span>;
   const d = daysUntil(job.deadline);
   const done = ["offer", "rejected", "ghosted", "withdrawn"].includes(job.status);
 
   let tone = "text-muted";
   if (!done && d !== null) {
-    if (d < 0) tone = "text-rose-300";
-    else if (d <= 3) tone = "text-amber-300";
+    if (d < 0) tone = "text-danger";
+    else if (d <= 3) tone = "text-warn";
     else tone = "text-fg";
   }
 
@@ -33,33 +103,62 @@ function DeadlineCell({ job }: { job: Job }) {
   );
 }
 
+function companyMark(value: string): string {
+  return value.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("") || "?";
+}
+
 export default async function JobsPage({
   searchParams,
 }: {
   searchParams: Promise<{
-    q?: string;
-    status?: string;
-    source?: string;
-    sort?: string;
+    q?: string | string[];
+    status?: string | string[];
+    source?: string | string[];
+    sort?: string | string[];
+    page?: string | string[];
   }>;
 }) {
   const sp = await searchParams;
   const user = await requireUser();
   const supabase = await createClient();
 
-  const q = (sp.q ?? "").trim();
-  const status = sp.status && STATUS_ORDER.includes(sp.status as never) ? sp.status : "";
-  const source = sp.source ?? "";
-  const sort = sp.sort ?? "new";
+  const q = param(sp.q).trim().slice(0, 100);
+  const tokens = searchTokens(q);
+  const statusRaw = param(sp.status);
+  const sourceRaw = param(sp.source);
+  const sortRaw = param(sp.sort);
+  const pageRaw = param(sp.page);
 
-  let query = supabase.from("jobs").select("*").eq("user_id", user.id);
+  const status = STATUS_ORDER.includes(statusRaw as (typeof STATUS_ORDER)[number])
+    ? statusRaw
+    : "";
+  const source = SOURCES.some((item) => item.value === sourceRaw) ? sourceRaw : "";
+  const sort = ["new", "updated", "deadline", "company"].includes(sortRaw)
+    ? sortRaw
+    : "new";
+  const page = Math.max(1, Number.parseInt(pageRaw, 10) || 1);
+  const filters = { q, status, source, sort };
 
-  if (q) {
-    const safe = q.replace(/[%,()]/g, " ").trim();
-    query = query.or(`company.ilike.%${safe}%,title.ilike.%${safe}%,notes.ilike.%${safe}%`);
-  }
-  if (status) query = query.eq("status", status);
-  if (source) query = query.eq("source", source);
+  // Count first so a stale/out-of-range `page` can be clamped instead of
+  // making PostgREST return 416 ("Requested range not satisfiable").
+  const { count, error: countError } = await applyFilters(
+    supabase.from("jobs").select("id", { count: "exact", head: true }),
+    user.id,
+    tokens,
+    status,
+    source
+  );
+  const total = count ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (!countError && page > pageCount) redirect(jobsPageHref(filters, pageCount));
+
+  let query = applyFilters(
+    supabase.from("jobs").select("*"),
+    user.id,
+    tokens,
+    status,
+    source
+  );
 
   if (sort === "deadline") {
     query = query.order("deadline", { ascending: true, nullsFirst: false });
@@ -71,149 +170,151 @@ export default async function JobsPage({
     query = query.order("created_at", { ascending: false });
   }
 
-  const { data } = await query.limit(300);
+  const { data, error } = await query.range(
+    (page - 1) * PAGE_SIZE,
+    page * PAGE_SIZE - 1
+  );
   const jobs = (data ?? []) as Job[];
 
-  const hasFilters = Boolean(q || status || source || (sort && sort !== "new"));
+  const hasFilters = Boolean(tokens.length || status || source || sort !== "new");
 
   return (
     <div className="animate-in">
-      <PageHeader
-        title="Jobs"
-        subtitle={`${jobs.length} result${jobs.length === 1 ? "" : "s"}${
-          hasFilters ? " (filtered)" : ""
-        }`}
-        action={{ href: "/jobs/new", label: "Add job" }}
-      />
-
-      <form
-        method="get"
-        className="card mb-4 flex flex-wrap items-end gap-2 p-3"
-      >
-        <div className="relative min-w-[180px] flex-1">
-          <Icon
-            name="search"
-            size={14}
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted"
-          />
-          <input
-            name="q"
-            defaultValue={q}
-            placeholder="Search company, role, notes…"
-            className="input pl-8"
-          />
-        </div>
-
-        <select name="status" defaultValue={status} className="input w-auto min-w-[140px]">
-          <option value="">All statuses</option>
-          {STATUS_ORDER.map((s) => (
-            <option key={s} value={s}>
-              {STATUS_META[s].label}
-            </option>
-          ))}
-        </select>
-
-        <select name="source" defaultValue={source} className="input w-auto min-w-[130px]">
-          <option value="">All sources</option>
-          {SOURCES.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </select>
-
-        <select name="sort" defaultValue={sort} className="input w-auto min-w-[130px]">
-          <option value="new">Newest first</option>
-          <option value="updated">Recently updated</option>
-          <option value="deadline">Deadline soon</option>
-          <option value="company">Company A–Z</option>
-        </select>
-
-        <button type="submit" className="btn btn-ghost">
-          Apply
-        </button>
-        {hasFilters && (
-          <Link href="/jobs" className="btn btn-ghost text-muted">
-            Reset
-          </Link>
-        )}
-      </form>
-
-      {jobs.length === 0 ? (
-        <div className="card px-6 py-14 text-center">
-          <p className="text-sm font-medium">No jobs match</p>
-          <p className="mt-1 text-xs text-muted">
-            {hasFilters
-              ? "Try clearing the filters."
-              : "Add your first job to start tracking."}
+      <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="display text-[26px] text-fg">Jobs</h1>
+          <p className="mt-1 text-[12px] text-muted">
+            {total} tracked{hasFilters ? " · filtered" : ""}
           </p>
-          <Link href="/jobs/new" className="btn btn-primary mt-4">
+        </div>
+        <AddJobTrigger className={buttonVariants({ variant: "default", size: "sm" })}>
+          <Icon name="plus" size={14} />
+          Add job
+        </AddJobTrigger>
+      </header>
+
+      <JobsFilterBar q={filters.q} status={filters.status} source={filters.source} sort={filters.sort} />
+
+      {error ? (
+        <div role="alert" className="rounded-lg border border-danger/25 bg-danger-soft px-4 py-3 text-[12.5px] text-danger">
+          Could not load jobs. Please refresh and try again.
+        </div>
+      ) : jobs.length === 0 ? (
+        <div className="flex flex-col items-center border-y border-line px-6 py-14 text-center">
+          <p className="text-[13px] font-medium text-fg">No jobs match</p>
+          <p className="mt-1 text-[12px] text-muted">
+            {hasFilters ? "Try clearing the filters." : "Add your first job to start tracking."}
+          </p>
+          <AddJobTrigger className={cn(buttonVariants({ variant: "default", size: "sm" }), "mt-4")}>
             Add a job
-          </Link>
+          </AddJobTrigger>
         </div>
       ) : (
-        <div className="card overflow-hidden">
-          {/* header row — desktop only */}
-          <div className="hidden grid-cols-[1fr_120px_100px_110px_90px] gap-3 border-b border-line/70 px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted md:grid">
-            <span>Role / company</span>
-            <span>Status</span>
-            <span>Source</span>
-            <span>Deadline</span>
-            <span className="text-right">Updated</span>
-          </div>
+        <JobsSelectionProvider ids={jobs.map((job) => job.id)}>
+          <BulkJobActions />
 
-          <ul className="divide-y divide-line/60">
-            {jobs.map((job) => (
-              <li key={job.id}>
-                <Link
-                  href={`/jobs/${job.id}`}
-                  className="grid grid-cols-1 gap-2 px-4 py-3 transition hover:bg-panel2/50 md:grid-cols-[1fr_120px_100px_110px_90px] md:items-center md:gap-3"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate text-[13.5px] font-medium">
-                        {job.title || "(untitled role)"}
-                      </span>
-                      {job.priority <= 2 && (
-                        <span className="pill border-brand/30 bg-brand/10 px-1.5 py-0 text-[9.5px] text-brand">
-                          {job.priority === 1 ? "dream" : "high"}
+          <div>
+            <div className="flex items-center justify-between border-b border-line px-1 pb-2.5">
+              <div className="flex items-center gap-2.5">
+                <SelectAllCheckbox />
+                <span className="text-[11.5px] font-medium text-fg">Applications</span>
+                <span className="text-[11px] text-muted-2">{total} results</span>
+              </div>
+              <span className="mono text-[10px] text-muted-2">{page}/{pageCount}</span>
+            </div>
+
+            <div className="hidden grid-cols-[20px_minmax(0,1.5fr)_120px_100px_130px] gap-3 border-b border-line px-1 py-2 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-2 lg:grid">
+              <span aria-hidden="true" />
+              <span>Company / role</span>
+              <span>Status</span>
+              <span>Source</span>
+              <span className="text-right">Deadline</span>
+            </div>
+
+            <ul className="divide-y divide-line">
+              {jobs.map((job) => (
+                <li key={job.id}>
+                  <div className="grid grid-cols-[20px_minmax(0,1fr)] items-center gap-3 px-1">
+                    <JobCheckbox
+                      id={job.id}
+                      label={`${job.company || "Company not set"} — ${job.title || "Role not set"}`}
+                    />
+                    <Link
+                      href={`/jobs/${job.id}`}
+                      className="grid grid-cols-1 gap-2.5 rounded-md py-3 transition-colors hover:bg-surface-2/40 lg:grid-cols-[minmax(0,1.5fr)_120px_100px_130px] lg:items-center lg:gap-3"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line-2 bg-surface-2 text-[10px] font-semibold text-fg-2">
+                          {companyMark(job.company || job.title || job.url)}
                         </span>
-                      )}
-                    </div>
-                    <div className="truncate text-[11.5px] text-muted">
-                      {job.company || "Unknown company"}
-                      {job.location ? ` · ${job.location}` : ""}
-                    </div>
-                  </div>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span className="truncate text-[12.5px] font-medium text-fg">{job.company || "Company not set"}</span>
+                          </span>
+                          <span className="mt-0.5 flex min-w-0 items-center gap-1.5 truncate text-[11px] text-muted">
+                            <span className="truncate">{job.title || "Role not set"}</span>
+                            {job.location && <><span className="text-line-3">·</span><span className="truncate">{job.location}</span></>}
+                          </span>
+                        </span>
+                      </div>
 
-                  <div className="md:block">
-                    <StatusPill status={job.status} />
-                  </div>
+                      <div className="flex items-center justify-between gap-2 lg:block">
+                        <StatusPill status={job.status} />
+                        <span className="text-[10px] text-muted lg:hidden">{relativeTime(job.updated_at)}</span>
+                      </div>
 
-                  <div className="hidden text-[11.5px] capitalize text-muted md:block">
-                    {job.source || "—"}
-                  </div>
+                      <div className="hidden text-[11.5px] capitalize text-muted lg:block">
+                        {job.source || "—"}
+                      </div>
 
-                  <div className="hidden md:block">
-                    <DeadlineCell job={job} />
+                      <div className="flex items-center justify-between text-[11px] lg:block lg:text-right">
+                        <span className="text-[10px] text-muted lg:hidden">Deadline</span>
+                        <DeadlineCell job={job} />
+                      </div>
+                    </Link>
                   </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </JobsSelectionProvider>
+      )}
 
-                  <div className="hidden text-right text-[11px] text-muted md:block">
-                    {relativeTime(job.updated_at)}
-                  </div>
-
-                  {/* mobile meta row */}
-                  <div className="flex items-center gap-3 text-[11px] text-muted md:hidden">
-                    <DeadlineCell job={job} />
-                    <span className="capitalize">{job.source || "—"}</span>
-                    <span className="ml-auto">{relativeTime(job.updated_at)}</span>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
+      {!error && total > 0 && (
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-[11.5px] text-muted">
+          <span>Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}</span>
+          <nav aria-label="Jobs pages" className="flex items-center gap-2">
+            {page > 1 ? (
+              <Link href={jobsPageHref(filters, page - 1)} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 px-2.5 text-[11.5px]")}>
+                Previous
+              </Link>
+            ) : (
+              <Button variant="outline" size="sm" disabled className="h-8 px-2.5 text-[11.5px]">Previous</Button>
+            )}
+            <span className="mono text-[11px]">{page} / {pageCount}</span>
+            {page < pageCount ? (
+              <Link href={jobsPageHref(filters, page + 1)} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 px-2.5 text-[11.5px]")}>
+                Next
+              </Link>
+            ) : (
+              <Button variant="outline" size="sm" disabled className="h-8 px-2.5 text-[11.5px]">Next</Button>
+            )}
+          </nav>
         </div>
       )}
     </div>
   );
+}
+
+function jobsPageHref(
+  filters: { q?: string; status?: string; source?: string; sort?: string },
+  page: number
+): string {
+  const params = new URLSearchParams();
+  if (filters.q) params.set("q", filters.q);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.source) params.set("source", filters.source);
+  if (filters.sort && filters.sort !== "new") params.set("sort", filters.sort);
+  params.set("page", String(page));
+  return `/jobs?${params.toString()}`;
 }

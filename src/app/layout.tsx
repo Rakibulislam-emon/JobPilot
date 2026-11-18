@@ -1,5 +1,25 @@
 import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono, Hind_Siliguri } from "next/font/google";
 import "./globals.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const hindSiliguri = Hind_Siliguri({
+  variable: "--font-hind-siliguri",
+  subsets: ["bengali", "latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "JobDesk — job application tracker",
@@ -8,7 +28,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#060f14",
+  themeColor: "#000000",
   width: "device-width",
   initialScale: 1,
 };
@@ -19,8 +39,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen">{children}</body>
+    <html
+      lang="en"
+      className={`dark ${geistSans.variable} ${geistMono.variable} ${hindSiliguri.variable}`}
+    >
+      <body className="min-h-screen">
+        <div aria-hidden className="bg-grid pointer-events-none fixed inset-0 -z-10" />
+        {children}
+      </body>
     </html>
   );
 }
