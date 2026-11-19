@@ -20,6 +20,7 @@ export type Job = {
   url: string;
   deadline: string | null;
   applied_at: string | null;
+  interview_date: string | null;
   status: Status;
   priority: number;
   description: string;

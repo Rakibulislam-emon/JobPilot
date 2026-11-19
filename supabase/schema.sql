@@ -21,6 +21,7 @@ create table if not exists public.jobs (
   url          text not null default '',
   deadline     date,
   applied_at   date,
+  interview_date date,
 
   status       text not null default 'saved'
                check (status in ('saved','applied','oa','interview','offer','rejected','ghosted','withdrawn')),

@@ -10,8 +10,8 @@ export const maxDuration = 60;
 const ALLOWED_STATUS = [
   "saved",
   "applied",
-  "oa",
   "interview",
+  "oa",
   "offer",
   "rejected",
   "ghosted",
@@ -95,6 +95,7 @@ export async function POST(req: Request) {
     url,
     deadline: isoDate(body.deadline),
     applied_at: isoDate(body.applied_at),
+    interview_date: isoDate(body.interview_date),
     status,
     description: text(body.description, 4000),
     notes: text(body.notes, 4000),

@@ -1,13 +1,14 @@
-import { addNote, deleteJob } from "@/app/actions";
+import { deleteJob } from "@/app/actions";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
+import { AddTimelineNote, DeleteTimelineNote } from "@/components/TimelineNoteControls";
 import { EditJobTrigger } from "@/components/EditJobTrigger";
 import { Icon } from "@/components/Icon";
+import { InterviewSchedule } from "@/components/InterviewSchedule";
 import { InterviewQuestions } from "@/components/InterviewQuestions";
 import { StatusPill } from "@/components/StatusPill";
 import { StatusSwitcher } from "@/components/StatusSwitcher";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { buttonVariants } from "@/components/ui/button";
 import { STATUS_META } from "@/lib/constants";
 import { daysUntil, formatDate, relativeTime } from "@/lib/format";
 import { getApplicationHref, getApplicationLinkLabel } from "@/lib/jobUrl";
@@ -233,6 +234,10 @@ export default async function JobDetailPage({
 
         {/* Rail */}
         <aside className="min-w-0 space-y-6">
+          <DetailBlock label="Interview date">
+            <InterviewSchedule jobId={job.id} interviewDate={job.interview_date} />
+          </DetailBlock>
+
           <DetailBlock label="Move to status">
             <StatusSwitcher jobId={job.id} current={job.status} />
           </DetailBlock>
@@ -256,20 +261,7 @@ export default async function JobDetailPage({
           label="Timeline"
           right={<span className="mono text-[11px] text-muted-2">{activities.length} event{activities.length === 1 ? "" : "s"}</span>}
         >
-          <form action={addNote} className="mb-5 flex gap-2">
-            <input type="hidden" name="job_id" value={job.id} />
-            <Input
-              name="note"
-              placeholder="Add a note — recruiter called, interview scheduled…"
-              aria-label="Add a timeline note"
-              required
-              className="h-9 min-w-0 flex-1 text-[12.5px]"
-            />
-            <Button type="submit" size="sm" className="h-9 shrink-0">
-              <Icon name="plus" size={13} />
-              <span className="hidden sm:inline">Add note</span>
-            </Button>
-          </form>
+          <AddTimelineNote jobId={job.id} />
 
           <ol className="relative before:absolute before:bottom-4 before:left-[5px] before:top-3 before:w-px before:bg-line-2">
             {activities.map((a) => {
@@ -291,7 +283,10 @@ export default async function JobDetailPage({
                         <span className="font-medium">{STATUS_META[(a.to_status as Status) ?? "saved"]?.label}</span>
                       </>
                     ) : a.kind === "note" ? (
-                      <span className="whitespace-pre-line">{a.note}</span>
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="min-w-0 flex-1 whitespace-pre-line break-words">{a.note}</span>
+                        <DeleteTimelineNote jobId={job.id} activityId={a.id} />
+                      </div>
                     ) : a.kind === "created" ? (
                       <>Job added to JobDesk</>
                     ) : (

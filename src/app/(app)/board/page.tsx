@@ -18,7 +18,7 @@ export default async function BoardPage() {
     .limit(400);
 
   const jobs = (data ?? []) as Job[];
-  const activeCount = jobs.filter((job) => ["saved", "applied", "oa", "interview"].includes(job.status)).length;
+  const activeCount = jobs.filter((job) => ["saved", "applied", "interview", "oa"].includes(job.status)).length;
 
   return (
     <div className="animate-in min-w-0">

@@ -11,8 +11,8 @@ import { redirect } from "next/navigation";
 const STATUSES: Status[] = [
   "saved",
   "applied",
-  "oa",
   "interview",
+  "oa",
   "offer",
   "rejected",
   "ghosted",
@@ -74,6 +74,7 @@ export async function saveJob(formData: FormData) {
     applied_at:
       dateOrNull(str(formData, "applied_at")) ??
       (status === "applied" ? new Date().toISOString().slice(0, 10) : null),
+    interview_date: dateOrNull(str(formData, "interview_date")),
     status,
     description: str(formData, "description"),
     notes: str(formData, "notes"),
@@ -194,23 +195,113 @@ export async function updateStatus(jobId: string, status: Status): Promise<{ ok:
   return { ok: true };
 }
 
-export async function addNote(formData: FormData) {
+export async function saveInterviewDate(
+  jobId: string,
+  value: string
+): Promise<{ ok: true } | { error: string }> {
   const user = await requireUser();
   const supabase = await createClient();
+  const interviewDate = value ? dateOrNull(value) : null;
 
-  const jobId = str(formData, "job_id");
-  const note = str(formData, "note");
-  if (!jobId || !note) return;
+  const parsedDate = interviewDate ? new Date(`${interviewDate}T00:00:00.000Z`) : null;
+  if (
+    value &&
+    (!interviewDate ||
+      !parsedDate ||
+      Number.isNaN(parsedDate.getTime()) ||
+      parsedDate.toISOString().slice(0, 10) !== value)
+  ) {
+    return { error: "Choose a valid interview date." };
+  }
 
-  await supabase.from("activities").insert({
+  const { data: job, error: lookupError } = await supabase
+    .from("jobs")
+    .select("interview_date")
+    .eq("id", jobId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (lookupError || !job) return { error: "Job not found or access denied." };
+  if (job.interview_date === interviewDate) return { ok: true };
+
+  const { error } = await supabase
+    .from("jobs")
+    .update({ interview_date: interviewDate })
+    .eq("id", jobId)
+    .eq("user_id", user.id);
+  if (error) return { error: error.message };
+
+  const { error: activityError } = await supabase.from("activities").insert({
     job_id: jobId,
     user_id: user.id,
-    kind: "note",
-    note: note.slice(0, 2000),
+    kind: "interview",
+    note: interviewDate
+      ? `Interview date set to ${interviewDate}`
+      : "Interview date cleared",
   });
 
   revalidatePath(`/jobs/${jobId}`);
   revalidatePath("/");
+  if (activityError) {
+    return { error: "Interview date saved, but its timeline entry could not be recorded." };
+  }
+  return { ok: true };
+}
+
+export async function addNote(formData: FormData): Promise<{ ok: true } | { error: string }> {
+  const user = await requireUser();
+  const supabase = await createClient();
+
+  const jobId = str(formData, "job_id");
+  const note = str(formData, "note").slice(0, 2000);
+  if (!jobId || !note) return { error: "Write a note before adding it." };
+
+  const { data: job } = await supabase
+    .from("jobs")
+    .select("id")
+    .eq("id", jobId)
+    .eq("user_id", user.id)
+    .single();
+  if (!job) return { error: "Job not found or access denied." };
+
+  const { error } = await supabase.from("activities").insert({
+    job_id: jobId,
+    user_id: user.id,
+    kind: "note",
+    note,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath(`/jobs/${jobId}`);
+  revalidatePath("/");
+  return { ok: true };
+}
+
+export async function deleteTimelineNote(
+  formData: FormData
+): Promise<{ ok: true } | { error: string }> {
+  const user = await requireUser();
+  const supabase = await createClient();
+
+  const jobId = str(formData, "job_id");
+  const activityId = str(formData, "activity_id");
+  if (!jobId || !activityId) return { error: "Could not identify this note." };
+
+  const { data, error } = await supabase
+    .from("activities")
+    .delete()
+    .eq("id", activityId)
+    .eq("job_id", jobId)
+    .eq("user_id", user.id)
+    .eq("kind", "note")
+    .select("id");
+
+  if (error) return { error: error.message };
+  if (!data?.length) return { error: "This note was not found or was already deleted." };
+
+  revalidatePath(`/jobs/${jobId}`);
+  revalidatePath("/");
+  return { ok: true };
 }
 
 export async function addContact(formData: FormData) {

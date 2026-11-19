@@ -190,3 +190,27 @@ assert.equal(
 );
 assert.equal(isValidApplicationLink("not a contact or URL"), false);
 console.log("Passed 9 copied application-link/contact extraction cases.");
+
+const formatSource = await readFile(new URL("../src/lib/format.ts", import.meta.url), "utf8");
+const { outputText: formatOutput } = ts.transpileModule(formatSource, {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+});
+const formatModule = { exports: {} };
+vm.runInNewContext(formatOutput, {
+  module: formatModule,
+  exports: formatModule.exports,
+});
+const { daysUntil } = formatModule.exports;
+const beforeDhakaMidnight = new Date("2026-11-19T19:41:00.000Z");
+assert.equal(
+  daysUntil("2026-11-19", beforeDhakaMidnight),
+  -1,
+  "a deadline on the previous Dhaka calendar day is overdue, not today"
+);
+assert.equal(
+  daysUntil("2026-11-20", beforeDhakaMidnight),
+  0,
+  "a deadline on the current Dhaka calendar day is today"
+);
+assert.equal(daysUntil("2026-02-31", beforeDhakaMidnight), null, "reject impossible dates");
+console.log("Passed 3 Bangladesh-time deadline countdown cases.");

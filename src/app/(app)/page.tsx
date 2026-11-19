@@ -45,17 +45,17 @@ export default async function DashboardPage() {
   const total = jobs.length;
   const active =
     (byStatus.saved ?? 0) + (byStatus.applied ?? 0) + (byStatus.oa ?? 0) + (byStatus.interview ?? 0);
-  const interviews = (byStatus.interview ?? 0) + (byStatus.oa ?? 0);
+  const interviews = byStatus.interview ?? 0;
   const offers = byStatus.offer ?? 0;
   const progressed =
     (byStatus.applied ?? 0) +
-    (byStatus.oa ?? 0) +
     (byStatus.interview ?? 0) +
+    (byStatus.oa ?? 0) +
     (byStatus.offer ?? 0) +
     (byStatus.rejected ?? 0);
   const responded =
-    (byStatus.oa ?? 0) +
     (byStatus.interview ?? 0) +
+    (byStatus.oa ?? 0) +
     (byStatus.offer ?? 0) +
     (byStatus.rejected ?? 0);
   const responseRate = progressed > 0 ? Math.round((responded / progressed) * 100) : 0;
@@ -136,7 +136,8 @@ export default async function DashboardPage() {
   const firstName = user.email?.split("@")[0] || "there";
   const statusBreakdown = [
     { label: "Active", count: (byStatus.saved ?? 0) + (byStatus.applied ?? 0), color: "#ededed" },
-    { label: "Interview stage", count: interviews, color: "#a3a3a3" },
+    { label: "Interview", count: interviews, color: "#a3a3a3" },
+    { label: "Assessment / training", count: byStatus.oa ?? 0, color: "#737373" },
     { label: "Offers", count: offers, color: "#14b8a6" },
     { label: "Rejected", count: byStatus.rejected ?? 0, color: "#525252" },
     { label: "Other", count: (byStatus.ghosted ?? 0) + (byStatus.withdrawn ?? 0), color: "#303030" },

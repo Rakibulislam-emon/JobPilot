@@ -5,8 +5,8 @@ const $ = (id) => document.getElementById(id);
 const STATUSES = [
   ["saved", "Saved"],
   ["applied", "Applied"],
-  ["oa", "OA / Assessment"],
   ["interview", "Interview"],
+  ["oa", "Assessment / Training"],
   ["offer", "Offer"],
   ["rejected", "Rejected"],
   ["ghosted", "Ghosted"],

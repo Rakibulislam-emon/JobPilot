@@ -42,11 +42,17 @@ export function DeadlinePicker({
   name,
   value,
   onChange,
+  ariaLabel = "Choose application deadline",
+  placeholder = "Pick a deadline",
+  clearLabel = "Clear deadline",
 }: {
   id: string;
   name: string;
   value: string;
   onChange: (value: string) => void;
+  ariaLabel?: string;
+  placeholder?: string;
+  clearLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const date = parseDate(value);
@@ -61,14 +67,14 @@ export function DeadlinePicker({
               id={id}
               type="button"
               variant="outline"
-              aria-label="Choose application deadline"
+              aria-label={ariaLabel}
               aria-expanded={open}
               className="h-9 w-full justify-between px-3 text-left font-normal"
             />
           }
         >
           <span className={date ? "text-fg" : "text-muted-2"}>
-            {date ? formatDisplayDate(date) : "Pick a deadline"}
+            {date ? formatDisplayDate(date) : placeholder}
           </span>
           <CalendarDays aria-hidden="true" className="size-4 text-muted" />
         </PopoverTrigger>
@@ -97,7 +103,7 @@ export function DeadlinePicker({
                   setOpen(false);
                 }}
               >
-                Clear deadline
+                {clearLabel}
               </Button>
             </div>
           )}

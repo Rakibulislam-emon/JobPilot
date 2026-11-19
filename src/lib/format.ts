@@ -29,17 +29,36 @@ export function relativeTime(value?: string | null): string {
   return formatDate(value);
 }
 
-export function daysUntil(dateStr?: string | null): number | null {
+export function daysUntil(
+  dateStr?: string | null,
+  now: Date = new Date()
+): number | null {
   if (!dateStr) return null;
-  const target = new Date(`${dateStr.slice(0, 10)}T00:00:00`).getTime();
-  if (Number.isNaN(target)) return null;
-  const today = new Date();
-  const start = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate()
-  ).getTime();
-  return Math.round((target - start) / 86400000);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr.slice(0, 10));
+  if (!match) return null;
+
+  const [, yearText, monthText, dayText] = match;
+  const target = Date.UTC(Number(yearText), Number(monthText) - 1, Number(dayText));
+  const targetDate = new Date(target);
+  if (
+    targetDate.getUTCFullYear() !== Number(yearText) ||
+    targetDate.getUTCMonth() !== Number(monthText) - 1 ||
+    targetDate.getUTCDate() !== Number(dayText)
+  ) {
+    return null;
+  }
+
+  const todayParts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Dhaka",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const todayValue = (type: string) =>
+    Number(todayParts.find((part) => part.type === type)?.value);
+  const today = Date.UTC(todayValue("year"), todayValue("month") - 1, todayValue("day"));
+
+  return (target - today) / 86_400_000;
 }
 
 export function daysSince(dateStr?: string | null): number | null {

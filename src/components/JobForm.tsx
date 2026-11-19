@@ -289,6 +289,7 @@ export function JobForm({
         )}
         <input type="hidden" name="description" defaultValue={job?.description ?? ""} />
         <input type="hidden" name="applied_at" defaultValue={formatDateInput(job?.applied_at)} />
+        <input type="hidden" name="interview_date" defaultValue={formatDateInput(job?.interview_date)} />
         {/* Preserve the original pasted post verbatim for future re-extraction. */}
         <input type="hidden" name="raw_post" value={postText} />
         <input

@@ -7,7 +7,7 @@ BDJobs, LinkedIn, a Facebook group screenshot — and files it for you.
 
 - **Dashboard** — how many jobs you're tracking, what needs attention, response rate.
 - **Jobs list** — search, filter by status/source, sort by deadline.
-- **Board** — drag cards through `Saved → Applied → OA → Interview → Offer`.
+- **Board** — drag cards through `Saved → Applied → Interview → Assessment / Training → Offer` (assessment is optional).
 - **Timeline** — every status change and note is kept per job.
 - **Extension** — one keystroke turns a job post into a tracked entry.
 
@@ -34,6 +34,8 @@ Gemini free tier for parsing · Tesseract.js as offline OCR fallback.
 2. Wait for provisioning, then open **SQL Editor → New query**.
 3. Paste the whole contents of [`supabase/schema.sql`](supabase/schema.sql) and press **Run**.
    You should see `Success. No rows returned`.
+   If your database was created before interview scheduling was added, run
+   [`supabase/interview_date.sql`](supabase/interview_date.sql) once in the SQL Editor.
 4. **Authentication → Users → Add user → Create new user**.
    Enter your email + a password, and tick *Auto Confirm User*. This is the only account
    that will exist.

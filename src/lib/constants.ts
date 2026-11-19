@@ -3,8 +3,8 @@ import type { QuestionStatus, Status } from "./types";
 export const STATUS_ORDER: Status[] = [
   "saved",
   "applied",
-  "oa",
   "interview",
+  "oa",
   "offer",
   "rejected",
   "ghosted",
@@ -14,8 +14,8 @@ export const STATUS_ORDER: Status[] = [
 export const BOARD_COLUMNS: Status[] = [
   "saved",
   "applied",
-  "oa",
   "interview",
+  "oa",
   "offer",
   "rejected",
 ];
@@ -39,8 +39,8 @@ export const STATUS_META: Record<
     bar: "bg-sky-400",
   },
   oa: {
-    label: "Assessment / OA",
-    short: "OA",
+    label: "Assessment / Training",
+    short: "Assessment",
     dot: "bg-amber-400",
     pill: "bg-surface-2 text-fg-2 border-line-2",
     bar: "bg-amber-400",
