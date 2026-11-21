@@ -26,6 +26,12 @@ const nextConfig = (phase: string): NextConfig => ({
     // The add-job form uploads a compressed screenshot through a Server Action.
     // 1 MB (the default) is too tight for a tall screenshot plus pasted text.
     serverActions: { bodySizeLimit: "4mb" },
+    // Next.js defaults dynamic pages to 0s in the client Router Cache, so every
+    // visit re-renders the page on the server. Keep visited pages reusable for
+    // 2 minutes (5 for static ones) — back-and-forth navigation then needs no
+    // new request. Mutations call revalidatePath(), which clears these entries
+    // immediately, so this does not leave the UI stale after an edit.
+    staleTimes: { dynamic: 120, static: 300 },
   },
 });
 
