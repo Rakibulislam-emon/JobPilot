@@ -381,6 +381,14 @@
 .stagger > *:nth-child(5) { animation-delay: 0.14s; }
 .stagger > *:nth-child(6) { animation-delay: 0.17s; }
 
+@media (prefers-reduced-motion: reduce) {
+  .animate-in,
+  .animate-fade,
+  .stagger > * {
+    animation: none !important;
+  }
+}
+
 .skeleton {
   background: linear-gradient(90deg, #111 25%, #171717 50%, #111 75%);
   background-size: 200% 100%;

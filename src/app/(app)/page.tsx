@@ -4,14 +4,15 @@ import { EmptyState, PageHeader, Section } from "@/components/Shell";
 import { StatusPill } from "@/components/StatusPill";
 import { STATUS_ORDER } from "@/lib/constants";
 import { daysSince, daysUntil, relativeTime } from "@/lib/format";
+import { JOB_DASHBOARD_COLUMNS } from "@/lib/queries";
 import { createClient, requireUser } from "@/lib/supabase/server";
-import type { Job } from "@/lib/types";
+import type { JobDashboard } from "@/lib/types";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
 type Attention = {
-  job: Job;
+  job: JobDashboard;
   reason: string;
   tone: "danger" | "warn" | "info";
 };
@@ -23,7 +24,7 @@ export default async function DashboardPage() {
   const [jobsResult, activityResult] = await Promise.all([
     supabase
       .from("jobs")
-      .select("*")
+      .select(JOB_DASHBOARD_COLUMNS)
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
     supabase
@@ -34,7 +35,7 @@ export default async function DashboardPage() {
       .limit(10),
   ]);
 
-  const jobs = (jobsResult.data ?? []) as Job[];
+  const jobs = (jobsResult.data ?? []) as JobDashboard[];
   const activities = activityResult.data ?? [];
 
   const byStatus = STATUS_ORDER.reduce<Record<string, number>>((acc, s) => {

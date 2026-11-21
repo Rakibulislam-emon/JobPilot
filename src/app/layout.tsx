@@ -17,8 +17,11 @@ const geistMono = Geist_Mono({
 const hindSiliguri = Hind_Siliguri({
   variable: "--font-hind-siliguri",
   subsets: ["bengali", "latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "600"],
   display: "swap",
+  // Bangla is a fallback for post text, not the UI face. Do not preload its
+  // font files on every page — that blocked first paint for no benefit.
+  preload: false,
 });
 
 export const metadata: Metadata = {

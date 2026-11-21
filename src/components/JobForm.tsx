@@ -131,31 +131,45 @@ export function JobForm({
       }
       uploadPrepared = true;
       setImagePreview(dataUrl);
+
+      // OCR downloads ~10 MB of language data and takes seconds on a phone.
+      // When the user already pasted the post text we have a cleaner source,
+      // so go straight to extraction instead of reading the screenshot.
+      const pasted = postText.trim();
       let usedOcr = false;
-      setScan({ busy: true, message: "Reading text from screenshot…", progress: 0 });
-      const text = await ocrDataUrl(dataUrl, (pct) =>
-        setScan((s) => ({ ...s, progress: pct }))
-      );
       let res;
-      if (text.trim().length > 20) {
-        usedOcr = true;
-        // Prefer the clean text the user pasted. OCR text is only a fallback —
-        // never overwrite the pasted post, which we keep verbatim.
-        const parseText = postText.trim() ? postText : text;
-        setField("url", extractJobUrl(parseText));
+
+      if (pasted.length >= 24) {
+        setScan({ busy: true, message: "Extracting job details…" });
+        setField("url", extractJobUrl(pasted));
         res = await postParse({
-          text: parseText,
+          text: pasted,
           image: dataUrl,
           url: getField("url"),
           title: getField("title"),
         });
       } else {
-        setScan({ busy: true, message: "OCR found little text; trying image AI…" });
-        res = await postParse({
-          image: dataUrl,
-          url: getField("url"),
-          title: getField("title"),
-        });
+        setScan({ busy: true, message: "Reading text from screenshot…", progress: 0 });
+        const text = await ocrDataUrl(dataUrl, (pct) =>
+          setScan((s) => ({ ...s, progress: pct }))
+        );
+        if (text.trim().length > 20) {
+          usedOcr = true;
+          setField("url", extractJobUrl(text));
+          res = await postParse({
+            text,
+            image: dataUrl,
+            url: getField("url"),
+            title: getField("title"),
+          });
+        } else {
+          setScan({ busy: true, message: "OCR found little text; trying image AI…" });
+          res = await postParse({
+            image: dataUrl,
+            url: getField("url"),
+            title: getField("title"),
+          });
+        }
       }
 
       applyDraft(res.draft);

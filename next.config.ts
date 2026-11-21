@@ -21,6 +21,12 @@ const nextConfig = (phase: string): NextConfig => ({
       { protocol: "https", hostname: "**.supabase.in" },
     ],
   },
+  poweredByHeader: false,
+  experimental: {
+    // The add-job form uploads a compressed screenshot through a Server Action.
+    // 1 MB (the default) is too tight for a tall screenshot plus pasted text.
+    serverActions: { bodySizeLimit: "4mb" },
+  },
 });
 
 export default nextConfig;

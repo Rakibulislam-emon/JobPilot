@@ -31,6 +31,31 @@ export type Job = {
   updated_at: string;
 };
 
+/** Narrow shapes for list screens — never fetch raw posts for a card. */
+export type JobDashboard = Pick<
+  Job,
+  "id" | "company" | "title" | "status" | "source" | "deadline" | "created_at" | "updated_at"
+>;
+
+export type JobSummary = Pick<
+  Job,
+  | "id"
+  | "company"
+  | "title"
+  | "location"
+  | "status"
+  | "source"
+  | "url"
+  | "deadline"
+  | "created_at"
+  | "updated_at"
+>;
+
+export type JobBoard = Pick<
+  Job,
+  "id" | "company" | "title" | "status" | "source" | "deadline" | "updated_at"
+>;
+
 export type Activity = {
   id: string;
   job_id: string;

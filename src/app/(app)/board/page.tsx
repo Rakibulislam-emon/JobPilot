@@ -1,8 +1,9 @@
 import { AddJobTrigger } from "@/components/AddJobModal";
 import { Board } from "@/components/Board";
 import { buttonVariants } from "@/components/ui/button";
+import { JOB_BOARD_COLUMNS } from "@/lib/queries";
 import { createClient, requireUser } from "@/lib/supabase/server";
-import type { Job } from "@/lib/types";
+import type { JobBoard } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -12,12 +13,12 @@ export default async function BoardPage() {
 
   const { data, error } = await supabase
     .from("jobs")
-    .select("*")
+    .select(JOB_BOARD_COLUMNS)
     .eq("user_id", user.id)
     .order("updated_at", { ascending: false })
     .limit(400);
 
-  const jobs = (data ?? []) as Job[];
+  const jobs = (data ?? []) as JobBoard[];
   const activeCount = jobs.filter((job) => ["saved", "applied", "interview", "oa"].includes(job.status)).length;
 
   return (

@@ -3,12 +3,21 @@ import { createServerClient } from "@supabase/ssr";
 
 const PUBLIC_PATHS = ["/login", "/api/parse", "/api/save", "/api/health"];
 
+/** These handlers authorize themselves — skip the extra Supabase round-trip. */
+const PUBLIC_API_PATHS = ["/api/parse", "/api/save", "/api/health"];
+
 export async function middleware(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !key) {
     // Not configured yet — let the pages render their setup notice.
+    return NextResponse.next();
+  }
+
+  const path = request.nextUrl.pathname;
+
+  if (PUBLIC_API_PATHS.some((p) => path === p || path.startsWith(`${p}/`))) {
     return NextResponse.next();
   }
 
@@ -35,7 +44,6 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const path = request.nextUrl.pathname;
   const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
 
   if (!user && !isPublic) {

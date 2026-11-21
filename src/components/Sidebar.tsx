@@ -51,7 +51,7 @@ export function Sidebar({ email }: SidebarProps) {
   return (
     <>
       {/* Persistent mobile app bar */}
-      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-bg/95 px-4 backdrop-blur-md md:hidden">
+      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-bg px-4 md:hidden">
         <Link
           href="/"
           className="flex min-w-0 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
@@ -155,7 +155,7 @@ export function Sidebar({ email }: SidebarProps) {
       {/* Primary mobile navigation keeps page switching one tap away */}
       <nav
         aria-label="Mobile navigation"
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-black/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-black pb-[env(safe-area-inset-bottom)] md:hidden"
       >
         {NAV.map((item) => {
           const active = isActive(item.href, pathname);

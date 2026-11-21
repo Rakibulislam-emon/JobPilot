@@ -12,6 +12,11 @@ import { buttonVariants } from "@/components/ui/button";
 import { STATUS_META } from "@/lib/constants";
 import { daysUntil, formatDate, relativeTime } from "@/lib/format";
 import { getApplicationHref, getApplicationLinkLabel } from "@/lib/jobUrl";
+import {
+  ACTIVITY_COLUMNS,
+  JOB_DETAIL_COLUMNS,
+  QUESTION_COLUMNS,
+} from "@/lib/queries";
 import { signedScreenshotUrl } from "@/lib/supabase/admin";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import type { Activity, InterviewQuestion, Job, Status } from "@/lib/types";
@@ -63,28 +68,30 @@ export default async function JobDetailPage({
   const user = await requireUser();
   const supabase = await createClient();
 
-  const { data } = await supabase
-    .from("jobs")
-    .select("*")
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .single();
-
-  if (!data) notFound();
-  const job = data as Job;
-
-  const [activityResult, questionsResult] = await Promise.all([
+  // All three reads only need the route id, so run them together instead of
+  // paying for three sequential Supabase round-trips.
+  const [jobResult, activityResult, questionsResult] = await Promise.all([
+    supabase
+      .from("jobs")
+      .select(JOB_DETAIL_COLUMNS)
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .single(),
     supabase
       .from("activities")
-      .select("*")
+      .select(ACTIVITY_COLUMNS)
       .eq("job_id", id)
-      .order("happened_at", { ascending: false }),
+      .order("happened_at", { ascending: false })
+      .limit(200),
     supabase
       .from("interview_questions")
-      .select("*")
+      .select(QUESTION_COLUMNS)
       .eq("job_id", id)
       .order("created_at", { ascending: false }),
   ]);
+
+  if (!jobResult.data) notFound();
+  const job = jobResult.data as Job;
 
   const activities = (activityResult.data ?? []) as Activity[];
   const questions = (questionsResult.data ?? []) as InterviewQuestion[];
@@ -208,7 +215,7 @@ export default async function JobDetailPage({
             )}
             {shotUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={shotUrl} alt="Original job post screenshot" className="w-full rounded-lg border border-line" />
+              <img src={shotUrl} alt="Original job post screenshot" loading="lazy" decoding="async" className="w-full rounded-lg border border-line" />
             )}
           </div>
         </details>

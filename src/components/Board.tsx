@@ -12,18 +12,18 @@ import {
 } from "@/components/ui/select";
 import { STATUS_META, STATUS_ORDER } from "@/lib/constants";
 import { daysUntil, formatDate } from "@/lib/format";
-import type { Job, Status } from "@/lib/types";
+import type { JobBoard, Status } from "@/lib/types";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
-export function Board({ jobs }: { jobs: Job[] }) {
+export function Board({ jobs }: { jobs: JobBoard[] }) {
   const [overrides, setOverrides] = useState<Record<string, Status>>({});
   const [dragging, setDragging] = useState<string | null>(null);
   const [hover, setHover] = useState<Status | null>(null);
   const [error, setError] = useState("");
   const [, startTransition] = useTransition();
 
-  const statusOf = (job: Job): Status => overrides[job.id] ?? job.status;
+  const statusOf = (job: JobBoard): Status => overrides[job.id] ?? job.status;
 
   function drop(status: Status, jobId: string) {
     const job = jobs.find((item) => item.id === jobId);
@@ -50,7 +50,7 @@ export function Board({ jobs }: { jobs: Job[] }) {
 
   const cardsFor = (status: Status) => jobs.filter((job) => statusOf(job) === status);
 
-  function renderCard(job: Job, options: { drag?: boolean; mobile?: boolean }) {
+  function renderCard(job: JobBoard, options: { drag?: boolean; mobile?: boolean }) {
     return (
       <JobCard
         key={job.id}
@@ -177,7 +177,7 @@ function JobCard({
   onDragStart,
   onDragEnd,
 }: {
-  job: Job;
+  job: JobBoard;
   status: Status;
   onMove: (status: Status) => void;
   dragging: boolean;

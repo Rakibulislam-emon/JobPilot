@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import type { User } from "@supabase/supabase-js";
 import {
   SUPABASE_ANON_KEY,
@@ -35,7 +36,11 @@ export async function createClient() {
   });
 }
 
-export async function getUser(): Promise<User | null> {
+/**
+ * `cache` dedupes within a single render: the app layout and the page both ask
+ * for the user, which used to mean two Supabase auth round-trips per request.
+ */
+export const getUser = cache(async (): Promise<User | null> => {
   if (!isSupabaseConfigured) return null;
   try {
     const supabase = await createClient();
@@ -46,7 +51,7 @@ export async function getUser(): Promise<User | null> {
   } catch {
     return null;
   }
-}
+});
 
 export async function requireUser(): Promise<User> {
   const user = await getUser();

@@ -1,12 +1,23 @@
+// Creating an Intl formatter is expensive; these run for every row on the
+// board and jobs list, so build them once per server process instead.
+const DATE_FORMAT = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
+
+const DHAKA_DATE_PARTS = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Asia/Dhaka",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 export function formatDate(value?: string | null): string {
   if (!value) return "—";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  return DATE_FORMAT.format(d);
 }
 
 export function formatDateInput(value?: string | null): string {
@@ -48,12 +59,7 @@ export function daysUntil(
     return null;
   }
 
-  const todayParts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Dhaka",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(now);
+  const todayParts = DHAKA_DATE_PARTS.formatToParts(now);
   const todayValue = (type: string) =>
     Number(todayParts.find((part) => part.type === type)?.value);
   const today = Date.UTC(todayValue("year"), todayValue("month") - 1, todayValue("day"));

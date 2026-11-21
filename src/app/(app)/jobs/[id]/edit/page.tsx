@@ -4,6 +4,7 @@ import { Icon } from "@/components/Icon";
 import { JobForm } from "@/components/JobForm";
 import { PageHeader } from "@/components/Shell";
 import { createClient, requireUser } from "@/lib/supabase/server";
+import { JOB_DETAIL_COLUMNS } from "@/lib/queries";
 import type { Job } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ export default async function EditJobPage({
 
   const { data } = await supabase
     .from("jobs")
-    .select("*")
+    .select(JOB_DETAIL_COLUMNS)
     .eq("id", id)
     .eq("user_id", user.id)
     .single();

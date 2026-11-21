@@ -153,7 +153,7 @@ function AddJobDialog({ job, onClose }: { job?: Job; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-[100]">
       <div
-        className="animate-fade absolute inset-0 bg-black/70 backdrop-blur-sm"
+        className="animate-fade absolute inset-0 bg-black/80"
         aria-hidden="true"
       />
 

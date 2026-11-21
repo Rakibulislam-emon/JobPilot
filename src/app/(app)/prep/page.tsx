@@ -9,6 +9,7 @@ import { PageHeader, Section } from "@/components/Shell";
 import { QUESTION_STATUS_META, QUESTION_STATUS_ORDER } from "@/lib/constants";
 import { formatDate } from "@/lib/format";
 import { createClient, requireUser } from "@/lib/supabase/server";
+import { QUESTION_COLUMNS } from "@/lib/queries";
 import type { InterviewQuestion, Job, QuestionStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -50,7 +51,7 @@ export default async function PrepPage({
   const [questionsResult, jobsResult] = await Promise.all([
     supabase
       .from("interview_questions")
-      .select("*")
+      .select(QUESTION_COLUMNS)
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
     supabase.from("jobs").select(JOB_FIELDS).eq("user_id", user.id),

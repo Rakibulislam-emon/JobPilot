@@ -12,7 +12,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { SOURCES, STATUS_ORDER } from "@/lib/constants";
 import { daysUntil, formatDate, relativeTime } from "@/lib/format";
 import { createClient, requireUser } from "@/lib/supabase/server";
-import type { Job } from "@/lib/types";
+import { JOB_LIST_COLUMNS } from "@/lib/queries";
+import type { JobSummary } from "@/lib/types";
 import { cn } from "cn";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -79,7 +80,7 @@ function param(value: string | string[] | undefined): string {
   return value ?? "";
 }
 
-function DeadlineCell({ job }: { job: Job }) {
+function DeadlineCell({ job }: { job: JobSummary }) {
   if (!job.deadline) return <span className="text-muted-2">—</span>;
   const d = daysUntil(job.deadline);
   const done = ["offer", "rejected", "ghosted", "withdrawn"].includes(job.status);
@@ -139,21 +140,18 @@ export default async function JobsPage({
   const page = Math.max(1, Number.parseInt(pageRaw, 10) || 1);
   const filters = { q, status, source, sort };
 
-  // Count first so a stale/out-of-range `page` can be clamped instead of
-  // making PostgREST return 416 ("Requested range not satisfiable").
-  const { count, error: countError } = await applyFilters(
+  // Count and page run together; a stale/out-of-range `page` is redirected
+  // below instead of making PostgREST return 416.
+  const countQuery = applyFilters(
     supabase.from("jobs").select("id", { count: "exact", head: true }),
     user.id,
     tokens,
     status,
     source
   );
-  const total = count ?? 0;
-  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  if (!countError && page > pageCount) redirect(jobsPageHref(filters, pageCount));
 
   let query = applyFilters(
-    supabase.from("jobs").select("*"),
+    supabase.from("jobs").select(JOB_LIST_COLUMNS),
     user.id,
     tokens,
     status,
@@ -170,11 +168,19 @@ export default async function JobsPage({
     query = query.order("created_at", { ascending: false });
   }
 
-  const { data, error } = await query.range(
-    (page - 1) * PAGE_SIZE,
-    page * PAGE_SIZE - 1
-  );
-  const jobs = (data ?? []) as Job[];
+  const [countResult, pageResult] = await Promise.all([
+    countQuery,
+    query.range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1),
+  ]);
+
+  const total = countResult.count ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (!countResult.error && page > pageCount) {
+    redirect(jobsPageHref(filters, pageCount));
+  }
+
+  const { data, error } = pageResult;
+  const jobs = (data ?? []) as JobSummary[];
 
   const hasFilters = Boolean(tokens.length || status || source || sort !== "new");
 

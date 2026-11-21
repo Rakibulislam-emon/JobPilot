@@ -40,6 +40,11 @@ create table if not exists public.jobs (
 create index if not exists jobs_user_status_idx  on public.jobs (user_id, status);
 create index if not exists jobs_user_created_idx on public.jobs (user_id, created_at desc);
 create index if not exists jobs_user_deadline_idx on public.jobs (user_id, deadline);
+create index if not exists jobs_user_updated_idx on public.jobs (user_id, updated_at desc);
+create index if not exists jobs_user_source_idx  on public.jobs (user_id, source);
+create index if not exists jobs_user_url_idx
+  on public.jobs (user_id, url)
+  where url is not null and url <> '';
 
 -- ------------------------------------------------------------
 -- 2. Activity timeline
@@ -95,6 +100,8 @@ create index if not exists interview_questions_job_idx
   on public.interview_questions (job_id, created_at desc);
 create index if not exists interview_questions_user_status_idx
   on public.interview_questions (user_id, status);
+create index if not exists interview_questions_user_created_idx
+  on public.interview_questions (user_id, created_at desc);
 
 -- ------------------------------------------------------------
 -- 4. Attachments (extra screenshots / JD files)
