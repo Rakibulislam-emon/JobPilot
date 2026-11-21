@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { JOB_TYPES, SOURCES, STATUS_META, STATUS_ORDER } from "@/lib/constants";
 import { formatDateInput } from "@/lib/format";
-import { fileToDataUrl, ocrDataUrl } from "@/lib/image";
+import { ocrDataUrl, prepareImage } from "@/lib/image";
 import {
   extractJobUrl,
   getApplicationHref,
@@ -120,9 +120,16 @@ export function JobForm({
   async function runScan(file: File) {
     setScan({ busy: true, message: "Reading screenshot…" });
     setConfidence({});
+    let uploadPrepared = false;
 
     try {
-      const dataUrl = await fileToDataUrl(file);
+      const { dataUrl, file: uploadFile } = await prepareImage(file);
+      if (fileRef.current) {
+        const transfer = new DataTransfer();
+        transfer.items.add(uploadFile);
+        fileRef.current.files = transfer.files;
+      }
+      uploadPrepared = true;
       setImagePreview(dataUrl);
       let usedOcr = false;
       setScan({ busy: true, message: "Reading text from screenshot…", progress: 0 });
@@ -172,6 +179,7 @@ export function JobForm({
           }`,
       });
     } catch (err) {
+      if (!uploadPrepared && fileRef.current) fileRef.current.value = "";
       setScan({
         busy: false,
         error: err instanceof Error ? err.message : "Scan failed.",

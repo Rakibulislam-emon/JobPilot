@@ -1,29 +1,69 @@
 /** Client-side image helpers. Imported only from "use client" components. */
 
-export async function fileToDataUrl(
-  file: File,
-  maxWidth = 1400,
-  quality = 0.72
-): Promise<string> {
+export async function prepareImage(file: File): Promise<{ dataUrl: string; file: File }> {
   const bitmapUrl = URL.createObjectURL(file);
   try {
     const img = await loadImage(bitmapUrl);
-    const scale = Math.min(1, maxWidth / img.width);
-    const w = Math.round(img.width * scale);
-    const h = Math.round(img.height * scale);
-
     const canvas = document.createElement("canvas");
-    canvas.width = w;
-    canvas.height = h;
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Canvas not supported");
-    ctx.drawImage(img, 0, 0, w, h);
 
-    const webp = canvas.toDataURL("image/webp", quality);
-    return webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/jpeg", quality);
+    const maxBytes = 750 * 1024;
+    let width = Math.min(1400, img.width);
+    while (width > 0) {
+      const height = Math.round((img.height / img.width) * width);
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+
+      for (const quality of [0.72, 0.6, 0.5, 0.4]) {
+        let blob = await canvasToBlob(canvas, "image/webp", quality);
+        if (blob.type !== "image/webp") {
+          blob = await canvasToBlob(canvas, "image/jpeg", quality);
+        }
+        if (blob.size <= maxBytes) {
+          const dataUrl = await blobToDataUrl(blob);
+          const extension = blob.type === "image/webp" ? "webp" : "jpg";
+          return {
+            dataUrl,
+            file: new File([blob], `screenshot.${extension}`, { type: blob.type }),
+          };
+        }
+      }
+      if (width <= 720) break;
+      width = Math.max(720, Math.floor(width * 0.8));
+    }
+
+    throw new Error("This image is too large to upload. Try a smaller screenshot.");
   } finally {
     URL.revokeObjectURL(bitmapUrl);
   }
+}
+
+function canvasToBlob(
+  canvas: HTMLCanvasElement,
+  mime: string,
+  quality: number
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("Could not compress that image"))),
+      mime,
+      quality
+    );
+  });
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () =>
+      typeof reader.result === "string"
+        ? resolve(reader.result)
+        : reject(new Error("Could not read the compressed image"));
+    reader.onerror = () => reject(new Error("Could not read the compressed image"));
+    reader.readAsDataURL(blob);
+  });
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
