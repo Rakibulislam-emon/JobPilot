@@ -22,6 +22,58 @@ export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 50;
 
+const DHAKA_DAY_PARTS = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Asia/Dhaka",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const DHAKA_DAY_LABEL = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Asia/Dhaka",
+  weekday: "long",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+
+type JobDayGroup = {
+  key: string;
+  label: string;
+  jobs: JobSummary[];
+};
+
+function dhakaDayKey(date: Date): string {
+  const parts = DHAKA_DAY_PARTS.formatToParts(date);
+  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
+function groupJobsByDay(jobs: JobSummary[]): JobDayGroup[] {
+  const today = dhakaDayKey(new Date());
+  const yesterday = new Date(Date.parse(`${today}T00:00:00Z`) - 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  const grouped = new Map<string, JobSummary[]>();
+
+  for (const job of jobs) {
+    const key = dhakaDayKey(new Date(job.created_at));
+    const dayJobs = grouped.get(key) ?? [];
+    dayJobs.push(job);
+    grouped.set(key, dayJobs);
+  }
+
+  return Array.from(grouped, ([key, dayJobs]) => ({
+    key,
+    label:
+      key === today
+        ? "Today"
+        : key === yesterday
+          ? "Yesterday"
+          : DHAKA_DAY_LABEL.format(new Date(`${key}T00:00:00Z`)),
+    jobs: dayJobs,
+  })).sort((a, b) => b.key.localeCompare(a.key));
+}
+
 /** Columns the free-text search looks at. */
 const SEARCH_COLUMNS = [
   "company",
@@ -181,6 +233,7 @@ export default async function JobsPage({
 
   const { data, error } = pageResult;
   const jobs = (data ?? []) as JobSummary[];
+  const jobDays = groupJobsByDay(jobs);
 
   const hasFilters = Boolean(tokens.length || status || source || sort !== "new");
 
@@ -219,69 +272,76 @@ export default async function JobsPage({
         <JobsSelectionProvider ids={jobs.map((job) => job.id)}>
           <BulkJobActions />
 
-          <div>
-            <div className="flex items-center justify-between border-b border-line px-1 pb-2.5">
-              <div className="flex items-center gap-2.5">
-                <SelectAllCheckbox />
-                <span className="text-[11.5px] font-medium text-fg">Applications</span>
-                <span className="text-[11px] text-muted-2">{total} results</span>
-              </div>
-              <span className="mono text-[10px] text-muted-2">{page}/{pageCount}</span>
+          <div className="mb-3 flex items-center justify-between border-b border-line px-1 pb-2.5">
+            <div className="flex items-center gap-2.5">
+              <SelectAllCheckbox />
+              <span className="text-[11.5px] font-medium text-fg">Added timeline</span>
+              <span className="text-[11px] text-muted-2">{total} results</span>
             </div>
+            <span className="mono text-[10px] text-muted-2">{page}/{pageCount}</span>
+          </div>
 
-            <div className="hidden grid-cols-[20px_minmax(0,1.5fr)_120px_100px_130px] gap-3 border-b border-line px-1 py-2 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-2 lg:grid">
-              <span aria-hidden="true" />
-              <span>Company / role</span>
-              <span>Status</span>
-              <span>Source</span>
-              <span className="text-right">Deadline</span>
-            </div>
+          <div className="space-y-6">
+            {jobDays.map((group) => (
+              <section key={group.key} className="relative ml-1 border-l border-line pl-4 sm:pl-5">
+                <span
+                  aria-hidden="true"
+                  className="absolute -left-[5px] top-1.5 size-2.5 rounded-full border-2 border-accent bg-bg"
+                />
+                <header className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                  <h2 className="text-[12px] font-medium text-fg">{group.label}</h2>
+                  <span className="text-[10.5px] text-muted">
+                    {group.jobs.length} job{group.jobs.length === 1 ? "" : "s"} added on this page
+                  </span>
+                </header>
 
-            <ul className="divide-y divide-line">
-              {jobs.map((job) => (
-                <li key={job.id}>
-                  <div className="grid grid-cols-[20px_minmax(0,1fr)] items-center gap-3 px-1">
-                    <JobCheckbox
-                      id={job.id}
-                      label={`${job.company || "Company not set"} — ${job.title || "Role not set"}`}
-                    />
-                    <Link
-                      href={`/jobs/${job.id}`}
-                      className="grid grid-cols-1 gap-2.5 rounded-md py-3 transition-colors hover:bg-surface-2/40 lg:grid-cols-[minmax(0,1.5fr)_120px_100px_130px] lg:items-center lg:gap-3"
-                    >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line-2 bg-surface-2 text-[10px] font-semibold text-fg-2">
-                          {companyMark(job.company || job.title || job.url)}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="flex min-w-0 items-center gap-2">
-                            <span className="truncate text-[12.5px] font-medium text-fg">{job.company || "Company not set"}</span>
-                          </span>
-                          <span className="mt-0.5 flex min-w-0 items-center gap-1.5 truncate text-[11px] text-muted">
-                            <span className="truncate">{job.title || "Role not set"}</span>
-                            {job.location && <><span className="text-line-3">·</span><span className="truncate">{job.location}</span></>}
-                          </span>
-                        </span>
+                <ul className="divide-y divide-line">
+                  {group.jobs.map((job) => (
+                    <li key={job.id}>
+                      <div className="grid grid-cols-[20px_minmax(0,1fr)] items-center gap-3 px-1">
+                        <JobCheckbox
+                          id={job.id}
+                          label={`${job.company || "Company not set"} — ${job.title || "Role not set"}`}
+                        />
+                        <Link
+                          href={`/jobs/${job.id}`}
+                          className="grid grid-cols-1 gap-2.5 rounded-md py-3 transition-colors hover:bg-surface-2/40 lg:grid-cols-[minmax(0,1.5fr)_120px_100px_130px] lg:items-center lg:gap-3"
+                        >
+                          <div className="flex min-w-0 items-center gap-3">
+                            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line-2 bg-surface-2 text-[10px] font-semibold text-fg-2">
+                              {companyMark(job.company || job.title || job.url)}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="flex min-w-0 items-center gap-2">
+                                <span className="truncate text-[12.5px] font-medium text-fg">{job.company || "Company not set"}</span>
+                              </span>
+                              <span className="mt-0.5 flex min-w-0 items-center gap-1.5 truncate text-[11px] text-muted">
+                                <span className="truncate">{job.title || "Role not set"}</span>
+                                {job.location && <><span className="text-line-3">·</span><span className="truncate">{job.location}</span></>}
+                              </span>
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 lg:block">
+                            <StatusPill status={job.status} />
+                            <span className="text-[10px] text-muted lg:hidden">{relativeTime(job.updated_at)}</span>
+                          </div>
+
+                          <div className="hidden text-[11.5px] capitalize text-muted lg:block">
+                            {job.source || "—"}
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px] lg:block lg:text-right">
+                            <span className="text-[10px] text-muted lg:hidden">Deadline</span>
+                            <DeadlineCell job={job} />
+                          </div>
+                        </Link>
                       </div>
-
-                      <div className="flex items-center justify-between gap-2 lg:block">
-                        <StatusPill status={job.status} />
-                        <span className="text-[10px] text-muted lg:hidden">{relativeTime(job.updated_at)}</span>
-                      </div>
-
-                      <div className="hidden text-[11.5px] capitalize text-muted lg:block">
-                        {job.source || "—"}
-                      </div>
-
-                      <div className="flex items-center justify-between text-[11px] lg:block lg:text-right">
-                        <span className="text-[10px] text-muted lg:hidden">Deadline</span>
-                        <DeadlineCell job={job} />
-                      </div>
-                    </Link>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
           </div>
         </JobsSelectionProvider>
       )}
