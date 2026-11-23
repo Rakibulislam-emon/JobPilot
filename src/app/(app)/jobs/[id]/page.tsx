@@ -99,19 +99,22 @@ export default async function JobDetailPage({
   const shotUrl = await signedScreenshotUrl(job.screenshot);
 
   const dleft = daysUntil(job.deadline);
-  const closed = ["offer", "rejected", "ghosted", "withdrawn"].includes(job.status);
 
   const deadlineTone =
-    dleft !== null && dleft < 0
+    dleft !== null && (dleft < 0 || dleft <= 2)
       ? "border-danger/25 bg-danger-soft text-danger"
-      : dleft !== null && dleft <= 3
+      : dleft !== null && dleft <= 5
         ? "border-warn/25 bg-warn-soft text-warn"
-        : "border-info/20 bg-info-soft text-info";
+        : "border-line bg-surface-2 text-muted";
 
   const href = job.url ? getApplicationHref(job.url) : null;
 
   const aiMeta = job.ai_meta && typeof job.ai_meta === "object" ? job.ai_meta : {};
   const rawPost = typeof aiMeta.raw_post === "string" ? aiMeta.raw_post : "";
+  const applyLink =
+    typeof aiMeta.apply_link === "string"
+      ? getApplicationHref(aiMeta.apply_link)
+      : null;
   const hasOriginal = Boolean(rawPost.trim() || shotUrl);
 
   return (
@@ -127,6 +130,16 @@ export default async function JobDetailPage({
             All jobs
           </Link>
           <div className="flex items-center gap-2">
+            {applyLink && (
+              <a
+                href={applyLink}
+                target="_blank"
+                rel="noreferrer"
+                className={buttonVariants({ variant: "default", size: "sm" })}
+              >
+                Apply
+              </a>
+            )}
             {href && (
               <a href={href} target="_blank" rel="noreferrer" className={buttonVariants({ variant: "outline", size: "sm" })}>
                 <Icon name="external" size={13} />
@@ -155,7 +168,7 @@ export default async function JobDetailPage({
       </header>
 
       {/* Deadline signal */}
-      {job.deadline && !closed && dleft !== null && (
+      {job.deadline && dleft !== null && (
         <div className={cn("mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3.5 py-3", deadlineTone)}>
           <div className="flex min-w-0 items-center gap-2.5">
             <span className="grid size-7 shrink-0 place-items-center rounded-md border border-current/20 bg-current/10">
@@ -165,18 +178,14 @@ export default async function JobDetailPage({
               <p className="text-[9.5px] font-semibold uppercase tracking-[0.14em] opacity-80">Deadline</p>
               <p className="text-[13px] font-medium">
                 {formatDate(job.deadline)}
-                <span className="ml-2 font-normal opacity-85">
-                  {dleft < 0
-                    ? `${Math.abs(dleft)} day${Math.abs(dleft) === 1 ? "" : "s"} overdue`
-                    : dleft === 0
-                      ? "Today — last chance"
-                      : `${dleft} day${dleft === 1 ? "" : "s"} left`}
-                </span>
+                <Badge variant="outline" className="ml-2 border-current/25 font-normal text-current">
+                  {dleft < 0 ? "Expired" : `${dleft}d left`}
+                </Badge>
               </p>
             </div>
           </div>
           <span className="text-[11px] opacity-80">
-            {dleft < 0 ? "Move this job on or let it go" : job.status === "saved" ? "Apply before this date" : "Keep the momentum going"}
+            {dleft < 0 ? "Deadline passed" : job.status === "saved" ? "Apply before this date" : "Keep the momentum going"}
           </span>
         </div>
       )}

@@ -17,7 +17,8 @@ import { useEffect, useRef, useState, useTransition } from "react";
 const SORT_OPTIONS = [
   { value: "new", label: "Newest first" },
   { value: "updated", label: "Recently updated" },
-  { value: "deadline", label: "Deadline soon" },
+  { value: "deadline", label: "Deadline (soonest)" },
+  { value: "priority", label: "Priority" },
   { value: "company", label: "Company A–Z" },
 ];
 

@@ -12,7 +12,7 @@ export const JOB_DASHBOARD_COLUMNS =
   "id, company, title, status, source, deadline, created_at, updated_at";
 
 export const JOB_LIST_COLUMNS =
-  "id, company, title, location, status, source, url, deadline, created_at, updated_at";
+  "id, company, title, location, status, source, url, salary, priority, deadline, created_at, updated_at";
 
 export const JOB_BOARD_COLUMNS =
   "id, company, title, status, source, deadline, updated_at";

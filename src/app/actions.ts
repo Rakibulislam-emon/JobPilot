@@ -1,6 +1,7 @@
 "use server";
 
 import { isQuestionStatus } from "@/lib/constants";
+import { todayDateInput } from "@/lib/format";
 import { isValidApplicationLink } from "@/lib/jobUrl";
 import { removeScreenshot, uploadFile } from "@/lib/storage";
 import { createClient, requireUser } from "@/lib/supabase/server";
@@ -17,7 +18,15 @@ const STATUSES: Status[] = [
   "rejected",
   "ghosted",
   "withdrawn",
+  "skipped",
 ];
+
+const SKIP_REASONS = [
+  "Too far",
+  "Salary too low",
+  "Requirements don't match",
+  "Not interested",
+] as const;
 
 function str(fd: FormData, key: string): string {
   const v = fd.get(key);
@@ -73,7 +82,7 @@ export async function saveJob(formData: FormData) {
     deadline: dateOrNull(str(formData, "deadline")),
     applied_at:
       dateOrNull(str(formData, "applied_at")) ??
-      (status === "applied" ? new Date().toISOString().slice(0, 10) : null),
+      (status === "applied" ? todayDateInput() : null),
     interview_date: dateOrNull(str(formData, "interview_date")),
     status,
     description: str(formData, "description"),
@@ -153,15 +162,22 @@ export async function saveJob(formData: FormData) {
   redirect(`/jobs/${created.id}`);
 }
 
-export async function updateStatus(jobId: string, status: Status): Promise<{ ok: true } | { error: string }> {
+export async function updateStatus(
+  jobId: string,
+  status: Status,
+  skipReason?: string
+): Promise<{ ok: true } | { error: string }> {
   const user = await requireUser();
   const supabase = await createClient();
 
   if (!STATUSES.includes(status)) return { error: "Invalid job status." };
+  if (skipReason && !SKIP_REASONS.includes(skipReason as (typeof SKIP_REASONS)[number])) {
+    return { error: "Invalid skip reason." };
+  }
 
   const { data: previous } = await supabase
     .from("jobs")
-    .select("status")
+    .select("status, ai_meta")
     .eq("id", jobId)
     .eq("user_id", user.id)
     .single();
@@ -170,7 +186,14 @@ export async function updateStatus(jobId: string, status: Status): Promise<{ ok:
 
   const patch: Record<string, unknown> = { status };
   if (status === "applied" && previous?.status !== "applied") {
-    patch.applied_at = new Date().toISOString().slice(0, 10);
+    patch.applied_at = todayDateInput();
+  }
+  if (status === "skipped" && skipReason) {
+    const aiMeta =
+      previous.ai_meta && typeof previous.ai_meta === "object" && !Array.isArray(previous.ai_meta)
+        ? previous.ai_meta
+        : {};
+    patch.ai_meta = { ...aiMeta, skip_reason: skipReason };
   }
 
   const { error } = await supabase
@@ -193,6 +216,52 @@ export async function updateStatus(jobId: string, status: Status): Promise<{ ok:
 
   revalidateAll();
   return { ok: true };
+}
+
+export async function skipJobs(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const supabase = await createClient();
+  const ids = Array.from(
+    new Set(
+      formData
+        .getAll("ids")
+        .filter((value): value is string => typeof value === "string" && value.length > 0)
+    )
+  ).slice(0, 200);
+  if (ids.length === 0) return;
+
+  const { data: jobs, error: lookupError } = await supabase
+    .from("jobs")
+    .select("id, status")
+    .in("id", ids)
+    .eq("user_id", user.id);
+  if (lookupError) throw new Error(`Could not load selected jobs: ${lookupError.message}`);
+  if (!jobs?.length) return;
+
+  const changedJobs = jobs.filter((job) => job.status !== "skipped");
+  if (changedJobs.length === 0) return;
+
+  const changedIds = changedJobs.map((job) => job.id);
+  const { error: updateError } = await supabase
+    .from("jobs")
+    .update({ status: "skipped" })
+    .in("id", changedIds)
+    .eq("user_id", user.id);
+  if (updateError) throw new Error(`Could not skip selected jobs: ${updateError.message}`);
+
+  const { error: activityError } = await supabase.from("activities").insert(
+    changedJobs.map((job) => ({
+      job_id: job.id,
+      user_id: user.id,
+      kind: "status",
+      from_status: job.status,
+      to_status: "skipped",
+      note: "",
+    }))
+  );
+  if (activityError) throw new Error(`Jobs were skipped, but timeline entries failed: ${activityError.message}`);
+
+  revalidateAll();
 }
 
 export async function saveInterviewDate(

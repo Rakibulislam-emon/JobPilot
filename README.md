@@ -6,8 +6,8 @@ A personal **job application tracker** with a browser extension that captures an
 BDJobs, LinkedIn, a Facebook group screenshot — and files it for you.
 
 - **Dashboard** — how many jobs you're tracking, what needs attention, response rate.
-- **Jobs list** — search, filter by status/source, sort by deadline.
-- **Board** — drag cards through `Saved → Applied → Interview → Assessment / Training → Offer` (assessment is optional).
+- **Jobs list** — search, filter by status/source, sort by deadline or priority.
+- **Board** — drag cards through the application stages; jobs you will not pursue can be marked `Skipped`.
 - **Timeline** — every status change and note is kept per job.
 - **Extension** — one keystroke turns a job post into a tracked entry.
 
@@ -38,6 +38,8 @@ Gemini free tier for parsing · Tesseract.js as offline OCR fallback.
    [`supabase/interview_date.sql`](supabase/interview_date.sql) once in the SQL Editor.
    To enable per-user Muse API keys, also run
    [`supabase/api_tokens.sql`](supabase/api_tokens.sql) in the SQL Editor.
+   To enable the Skipped job status, run
+   [`supabase/jobs_skipped_status.sql`](supabase/jobs_skipped_status.sql) in the SQL Editor.
 4. **Authentication → Users → Add user → Create new user**.
    Enter each user's email + password, and tick *Auto Confirm User*. Users can create
    their own Muse API key from Settings after signing in.

@@ -160,5 +160,8 @@ function formatDate(value: string | null): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? "Unknown"
-    : new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
+    : new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeZone: "Asia/Dhaka",
+      }).format(date);
 }

@@ -32,11 +32,16 @@ function startOfMonth(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), 1);
 }
 
+function dhakaDate(date: Date): Date {
+  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 6));
+}
+
 function monthLabel(date: Date): string {
   return new Intl.DateTimeFormat("en-GB", {
     month: "long",
     year: "numeric",
-  }).format(date);
+    timeZone: "Asia/Dhaka",
+  }).format(dhakaDate(date));
 }
 
 function fullDateLabel(date: Date): string {
@@ -45,7 +50,8 @@ function fullDateLabel(date: Date): string {
     day: "numeric",
     month: "long",
     year: "numeric",
-  }).format(date);
+    timeZone: "Asia/Dhaka",
+  }).format(dhakaDate(date));
 }
 
 export function Calendar({ selected, onSelect, className }: CalendarProps) {

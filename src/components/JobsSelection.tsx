@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { useFormStatus } from "react-dom";
-import { deleteJobs } from "@/app/actions";
+import { deleteJobs, skipJobs } from "@/app/actions";
 import { Icon } from "./Icon";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
@@ -105,6 +105,21 @@ function DeleteSelectedButton({ count }: { count: number }) {
   );
 }
 
+function SkipSelectedButton({ count }: { count: number }) {
+  const { pending } = useFormStatus();
+  return (
+    <Button
+      type="submit"
+      variant="outline"
+      size="sm"
+      disabled={pending}
+      className="h-8 px-2.5 text-[11.5px]"
+    >
+      {pending ? "Skipping…" : `Skip ${count}`}
+    </Button>
+  );
+}
+
 export function BulkJobActions() {
   const { selected, clear } = useSelection();
   const count = selected.size;
@@ -122,6 +137,14 @@ export function BulkJobActions() {
         <Button type="button" variant="outline" size="sm" onClick={clear} className="h-8 px-2.5 text-[11.5px]">
           Clear
         </Button>
+        <form
+          action={skipJobs}
+        >
+          {ids.map((id) => (
+            <input key={id} type="hidden" name="ids" value={id} />
+          ))}
+          <SkipSelectedButton count={count} />
+        </form>
         <form
           action={deleteJobs}
           onSubmit={(event) => {

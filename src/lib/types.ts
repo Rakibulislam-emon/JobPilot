@@ -6,7 +6,8 @@ export type Status =
   | "offer"
   | "rejected"
   | "ghosted"
-  | "withdrawn";
+  | "withdrawn"
+  | "skipped";
 
 export type Job = {
   id: string;
@@ -46,6 +47,8 @@ export type JobSummary = Pick<
   | "status"
   | "source"
   | "url"
+  | "salary"
+  | "priority"
   | "deadline"
   | "created_at"
   | "updated_at"

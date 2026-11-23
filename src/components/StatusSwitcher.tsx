@@ -7,6 +7,13 @@ import type { Status } from "@/lib/types";
 import { cn } from "cn";
 import { useState, useTransition } from "react";
 
+const SKIP_REASONS = [
+  "Too far",
+  "Salary too low",
+  "Requirements don't match",
+  "Not interested",
+] as const;
+
 export function StatusSwitcher({
   jobId,
   current,
@@ -16,6 +23,16 @@ export function StatusSwitcher({
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const [choosingSkipReason, setChoosingSkipReason] = useState(false);
+
+  function moveToSkipped(reason?: string) {
+    startTransition(async () => {
+      setError("");
+      const result = await updateStatus(jobId, "skipped", reason);
+      if ("error" in result) setError(result.error);
+      else setChoosingSkipReason(false);
+    });
+  }
 
   return (
     <div
@@ -35,6 +52,10 @@ export function StatusSwitcher({
             aria-pressed={active}
             onClick={() => startTransition(async () => {
               setError("");
+              if (s === "skipped") {
+                setChoosingSkipReason(true);
+                return;
+              }
               const result = await updateStatus(jobId, s);
               if ("error" in result) setError(result.error);
             })}
@@ -58,6 +79,46 @@ export function StatusSwitcher({
           </Button>
         );
       })}
+      {choosingSkipReason && (
+        <div className="mt-1 border-t border-line px-2.5 pt-2.5">
+          <p className="mb-2 text-[10.5px] text-muted">Skip reason (optional)</p>
+          <div className="flex flex-wrap gap-1.5">
+            {SKIP_REASONS.map((reason) => (
+              <Button
+                key={reason}
+                type="button"
+                variant="outline"
+                size="xs"
+                disabled={pending}
+                onClick={() => moveToSkipped(reason)}
+                className="h-auto min-h-6 whitespace-normal py-1 text-left text-[10.5px]"
+              >
+                {reason}
+              </Button>
+            ))}
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              disabled={pending}
+              onClick={() => moveToSkipped()}
+              className="text-[10.5px]"
+            >
+              Skip without reason
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              disabled={pending}
+              onClick={() => setChoosingSkipReason(false)}
+              className="text-[10.5px] text-muted"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
       {error && <p role="alert" className="mt-1.5 px-2.5 text-[11px] text-danger">{error}</p>}
     </div>
   );
