@@ -47,6 +47,7 @@ export function LoginForm() {
         <Input
           id="email"
           type="email"
+          suppressHydrationWarning
           required
           autoComplete="email"
           value={email}
@@ -65,6 +66,7 @@ export function LoginForm() {
         <Input
           id="password"
           type="password"
+          suppressHydrationWarning
           required
           autoComplete="current-password"
           value={password}

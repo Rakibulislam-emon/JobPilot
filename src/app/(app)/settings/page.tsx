@@ -1,6 +1,7 @@
 import { AiProviderKeys } from "@/components/AiProviderKeys";
 import { CopyField } from "@/components/CopyField";
 import { Icon } from "@/components/Icon";
+import { MuseApiTokens, type MuseApiToken } from "@/components/MuseApiTokens";
 import { PageHeader, Section } from "@/components/Shell";
 import { getAiProviderKeyStatus, getAiProviderKeys, type AiProviderId } from "@/lib/aiKeyVault";
 import { BOARD_COLUMNS, STATUS_META } from "@/lib/constants";
@@ -14,7 +15,7 @@ import {
     isSupabaseConfigured,
 } from "@/lib/env";
 import { aiStatus } from "@/lib/extract";
-import { requireUser } from "@/lib/supabase/server";
+import { createClient, requireUser } from "@/lib/supabase/server";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +43,12 @@ export default async function SettingsPage() {
     getAiProviderKeyStatus(user.id),
     getAiProviderKeys(user.id),
   ]);
+  const supabase = await createClient();
+  const { data: apiTokens, error: apiTokensError } = await supabase
+    .from("api_tokens")
+    .select("id, created_at, last_used_at, revoked_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
   const ai = aiStatus(savedKeys);
   const providers: { id: AiProviderId; label: string; key: string }[] = [
     { id: "gemini", label: "Google Gemini", key: GEMINI_API_KEY || savedKeys.gemini || "" },
@@ -102,6 +109,13 @@ export default async function SettingsPage() {
         </Section>
 
         <div className="space-y-4">
+          <Section title="Muse API keys">
+            <MuseApiTokens
+              tokens={(apiTokens ?? []) as MuseApiToken[]}
+              loadError={apiTokensError?.message ?? null}
+            />
+          </Section>
+
           <Section title="AI provider API keys">
             {!keyStatus.available && (
               <p className="mx-4 mt-4 rounded-lg border border-warn/25 bg-warn-soft px-3 py-2 text-[11.5px] leading-relaxed text-warn">

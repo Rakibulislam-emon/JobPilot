@@ -36,11 +36,14 @@ Gemini free tier for parsing · Tesseract.js as offline OCR fallback.
    You should see `Success. No rows returned`.
    If your database was created before interview scheduling was added, run
    [`supabase/interview_date.sql`](supabase/interview_date.sql) once in the SQL Editor.
+   To enable per-user Muse API keys, also run
+   [`supabase/api_tokens.sql`](supabase/api_tokens.sql) in the SQL Editor.
 4. **Authentication → Users → Add user → Create new user**.
-   Enter your email + a password, and tick *Auto Confirm User*. This is the only account
-   that will exist.
-5. **Authentication → Sign In / Providers** → turn **off** *Allow new users to sign up*.
-   Now nobody else can create an account.
+   Enter each user's email + password, and tick *Auto Confirm User*. Users can create
+   their own Muse API key from Settings after signing in.
+5. **Authentication → Sign In / Providers** → turn **off** *Allow new users to sign up*
+   unless you want anyone to register. You can still add accounts manually in the
+   Supabase Users page.
 6. **Project Settings → API** — copy these three values:
    - `Project URL`
    - `anon public` key
@@ -89,6 +92,14 @@ secret stable and backed up; changing it makes saved keys unreadable. Run
 Editor, then restart/redeploy. Add Gemini, OpenRouter, and/or Groq keys in Settings.
 Provider keys are never returned to the browser. Clear text extraction still works
 without AI; free-provider quotas and availability are not guaranteed.
+
+### Connect Muse
+
+After applying `supabase/api_tokens.sql`, sign in to the intended user account and
+open **Settings → Muse API keys → Generate key for Muse**. Copy the key immediately;
+the plaintext is shown only once. Muse should send it as a Bearer token to
+`POST /api/save`. Each user's key adds jobs to that user's account, and keys can be
+revoked from Settings.
 
 ---
 
