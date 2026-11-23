@@ -11,6 +11,31 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
+const DHAKA_DAY_PARTS = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Asia/Dhaka",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const DHAKA_DATE_LABEL = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Asia/Dhaka",
+  weekday: "long",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+const DHAKA_HOUR = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Asia/Dhaka",
+  hour: "numeric",
+  hourCycle: "h23",
+});
+
+function dhakaDayKey(date: Date): string {
+  const parts = DHAKA_DAY_PARTS.formatToParts(date);
+  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
 type Attention = {
   job: JobDashboard;
   reason: string;
@@ -70,7 +95,7 @@ export default async function DashboardPage() {
   const attention: Attention[] = [];
 
   for (const job of jobs) {
-    if (["offer", "rejected", "ghosted", "withdrawn"].includes(job.status)) continue;
+    if (["offer", "rejected", "ghosted", "withdrawn", "skipped"].includes(job.status)) continue;
 
     if (job.deadline) {
       const d = daysUntil(job.deadline);
@@ -114,26 +139,24 @@ export default async function DashboardPage() {
 
   const maxStatus = Math.max(1, ...Object.values(byStatus));
   const today = new Date();
-  // Build the series from UTC parts and format with an explicit timezone.
-  // Mixing local `setDate` with UTC `toISOString` drifts by a day around
-  // midnight, which is exactly the kind of value that breaks hydration.
-  const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
   const dateLabel = new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
-    timeZone: "UTC",
+    timeZone: "Asia/Dhaka",
   });
+  const todayUtc = Date.parse(`${dhakaDayKey(today)}T00:00:00Z`);
   const activitySeries = Array.from({ length: 30 }, (_, index) => {
     const date = new Date(todayUtc - (29 - index) * 86_400_000);
     const key = date.toISOString().slice(0, 10);
     return {
       key,
       label: dateLabel.format(date),
-      count: jobs.filter((job) => job.created_at.slice(0, 10) === key).length,
+      count: jobs.filter((job) => dhakaDayKey(new Date(job.created_at)) === key).length,
     };
   });
+  const hour = Number(DHAKA_HOUR.format(today));
   const greeting =
-    today.getHours() < 12 ? "Good morning" : today.getHours() < 18 ? "Good afternoon" : "Good evening";
+    hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const firstName = user.email?.split("@")[0] || "there";
   const statusBreakdown = [
     { label: "Active", count: (byStatus.saved ?? 0) + (byStatus.applied ?? 0), color: "#ededed" },
@@ -142,6 +165,7 @@ export default async function DashboardPage() {
     { label: "Offers", count: offers, color: "#14b8a6" },
     { label: "Rejected", count: byStatus.rejected ?? 0, color: "#525252" },
     { label: "Other", count: (byStatus.ghosted ?? 0) + (byStatus.withdrawn ?? 0), color: "#303030" },
+    { label: "Skipped", count: byStatus.skipped ?? 0, color: "#404040" },
   ].filter((item) => item.count > 0);
   let donutPosition = 0;
   const donutGradient = statusBreakdown.map((item) => {
@@ -188,7 +212,7 @@ export default async function DashboardPage() {
           <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-2">Your workspace</div>
           <h1 className="display text-[26px] text-fg md:text-[32px]">{greeting}, {firstName}</h1>
           <p className="mt-1.5 text-[12px] text-muted">
-            {today.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" })}
+            {DHAKA_DATE_LABEL.format(today)}
             <span className="mx-2 text-line-3">·</span>
             {total} tracked · {thisWeek} added this week
           </p>

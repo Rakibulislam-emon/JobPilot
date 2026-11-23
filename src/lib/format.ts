@@ -4,6 +4,7 @@ const DATE_FORMAT = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
   month: "short",
   year: "numeric",
+  timeZone: "Asia/Dhaka",
 });
 
 const DHAKA_DATE_PARTS = new Intl.DateTimeFormat("en-US", {
@@ -23,6 +24,12 @@ export function formatDate(value?: string | null): string {
 export function formatDateInput(value?: string | null): string {
   if (!value) return "";
   return String(value).slice(0, 10);
+}
+
+export function todayDateInput(now = new Date()): string {
+  const parts = DHAKA_DATE_PARTS.formatToParts(now);
+  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
 export function relativeTime(value?: string | null): string {

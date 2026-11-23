@@ -30,11 +30,15 @@ function formatDateValue(date: Date): string {
 }
 
 function formatDisplayDate(date: Date): string {
+  const dhakaDate = new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 6)
+  );
   return new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",
-  }).format(date);
+    timeZone: "Asia/Dhaka",
+  }).format(dhakaDate);
 }
 
 export function DeadlinePicker({

@@ -9,6 +9,7 @@ export const STATUS_ORDER: Status[] = [
   "rejected",
   "ghosted",
   "withdrawn",
+  "skipped",
 ];
 
 export const BOARD_COLUMNS: Status[] = [
@@ -18,6 +19,7 @@ export const BOARD_COLUMNS: Status[] = [
   "oa",
   "offer",
   "rejected",
+  "skipped",
 ];
 
 export const STATUS_META: Record<
@@ -76,6 +78,13 @@ export const STATUS_META: Record<
   withdrawn: {
     label: "Withdrawn",
     short: "Withdrawn",
+    dot: "bg-zinc-500",
+    pill: "bg-surface-2 text-fg-2 border-line-2",
+    bar: "bg-zinc-500",
+  },
+  skipped: {
+    label: "Skipped",
+    short: "Skipped",
     dot: "bg-zinc-500",
     pill: "bg-surface-2 text-fg-2 border-line-2",
     bar: "bg-zinc-500",

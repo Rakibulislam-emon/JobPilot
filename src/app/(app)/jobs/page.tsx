@@ -88,6 +88,7 @@ const SEARCH_COLUMNS = [
 
 type FilterChain = {
   eq(column: string, value: string): FilterChain;
+  neq(column: string, value: string): FilterChain;
   or(filters: string): FilterChain;
 };
 
@@ -122,6 +123,7 @@ function applyFilters<T>(
     );
   }
   if (status) next = next.eq("status", status);
+  else next = next.neq("status", "skipped");
   if (source) next = next.eq("source", source);
   return next as unknown as T;
 }
@@ -135,23 +137,37 @@ function param(value: string | string[] | undefined): string {
 function DeadlineCell({ job }: { job: JobSummary }) {
   if (!job.deadline) return <span className="text-muted-2">—</span>;
   const d = daysUntil(job.deadline);
-  const done = ["offer", "rejected", "ghosted", "withdrawn"].includes(job.status);
 
   let tone = "text-muted";
-  if (!done && d !== null) {
-    if (d < 0) tone = "text-danger";
-    else if (d <= 3) tone = "text-warn";
+  if (d !== null) {
+    if (d < 0 || d <= 2) tone = "text-danger";
+    else if (d <= 5) tone = "text-warn";
     else tone = "text-fg";
   }
 
   return (
     <span className={`mono text-[11.5px] ${tone}`}>
       {formatDate(job.deadline)}
-      {!done && d !== null && d >= 0 && d <= 7 && (
+      {d !== null && (
         <span className="ml-1 text-[10px] opacity-80">
-          ({d === 0 ? "today" : `${d}d`})
+          ({d < 0 ? "Expired" : `${d}d`})
         </span>
       )}
+    </span>
+  );
+}
+
+function PriorityBadge({ priority }: { priority: number }) {
+  if (priority < 1 || priority > 3) return null;
+  const tone =
+    priority === 1
+      ? "border-success/25 bg-success-soft text-success"
+      : priority === 2
+        ? "border-info/25 bg-info-soft text-info"
+        : "border-line-2 bg-surface-2 text-muted";
+  return (
+    <span className={`mono inline-flex h-4 items-center rounded border px-1 text-[9px] ${tone}`}>
+      P{priority}
     </span>
   );
 }
@@ -186,7 +202,7 @@ export default async function JobsPage({
     ? statusRaw
     : "";
   const source = SOURCES.some((item) => item.value === sourceRaw) ? sourceRaw : "";
-  const sort = ["new", "updated", "deadline", "company"].includes(sortRaw)
+  const sort = ["new", "updated", "deadline", "priority", "company"].includes(sortRaw)
     ? sortRaw
     : "new";
   const page = Math.max(1, Number.parseInt(pageRaw, 10) || 1);
@@ -212,6 +228,10 @@ export default async function JobsPage({
 
   if (sort === "deadline") {
     query = query.order("deadline", { ascending: true, nullsFirst: false });
+  } else if (sort === "priority") {
+    query = query
+      .order("priority", { ascending: true })
+      .order("created_at", { ascending: false });
   } else if (sort === "company") {
     query = query.order("company", { ascending: true });
   } else if (sort === "updated") {
@@ -314,11 +334,17 @@ export default async function JobsPage({
                             <span className="min-w-0 flex-1">
                               <span className="flex min-w-0 items-center gap-2">
                                 <span className="truncate text-[12.5px] font-medium text-fg">{job.company || "Company not set"}</span>
+                                <PriorityBadge priority={job.priority} />
                               </span>
                               <span className="mt-0.5 flex min-w-0 items-center gap-1.5 truncate text-[11px] text-muted">
                                 <span className="truncate">{job.title || "Role not set"}</span>
                                 {job.location && <><span className="text-line-3">·</span><span className="truncate">{job.location}</span></>}
                               </span>
+                              {job.salary && (
+                                <span className="mt-0.5 block truncate text-[10px] text-fg-2">
+                                  {job.salary}
+                                </span>
+                              )}
                             </span>
                           </div>
 
