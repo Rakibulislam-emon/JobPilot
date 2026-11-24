@@ -1,5 +1,6 @@
 import { deleteJob } from "@/app/actions";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
+import { CopyOriginalPostButton } from "@/components/CopyOriginalPostButton";
 import { AddTimelineNote, DeleteTimelineNote } from "@/components/TimelineNoteControls";
 import { EditJobTrigger } from "@/components/EditJobTrigger";
 import { Icon } from "@/components/Icon";
@@ -198,11 +199,11 @@ export default async function JobDetailPage({
         <DetailFact label="Applied" value={job.applied_at ? formatDate(job.applied_at) : "Not yet"} />
       </section>
 
-      {/* Original post — kept verbatim so the job's source never needs to be revisited. */}
+      {/* Keep the source post visible so it is easy to review and copy. */}
       {hasOriginal && (
-        <details className="group mb-7 overflow-hidden rounded-lg border border-line bg-surface/40">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-2.5 text-[12px] text-fg-2 transition-colors hover:text-fg [&::-webkit-details-marker]:hidden">
-            <span className="flex min-w-0 items-center gap-2">
+        <section className="mb-7 overflow-hidden rounded-lg border border-line bg-surface/40">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-3.5 py-2.5">
+            <div className="flex min-w-0 items-center gap-2 text-[12px] text-fg-2">
               <Icon name="note" size={14} className="shrink-0 text-muted" />
               <span>Original post</span>
               <span className="flex items-center gap-1.5">
@@ -213,32 +214,26 @@ export default async function JobDetailPage({
                   <Badge variant="outline" className="h-4 px-1.5 text-[9px] font-normal text-fg-2">Screenshot</Badge>
                 )}
               </span>
-            </span>
-            <Icon name="back" size={13} className="shrink-0 text-muted transition-transform group-open:rotate-90" />
-          </summary>
-          <div className="space-y-4 border-t border-line px-3.5 py-3.5">
+            </div>
+            {rawPost.trim() && <CopyOriginalPostButton text={rawPost} />}
+          </div>
+          <div className="space-y-4 px-3.5 py-3.5">
             {rawPost.trim() && (
-              <pre className="max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-md border border-line bg-bg/60 p-3 font-sans text-[12px] leading-relaxed text-fg/90">
+              <pre className="select-text whitespace-pre-wrap break-words rounded-md border border-line bg-bg/60 p-3 font-sans text-[12px] leading-relaxed text-fg/90">
                 {rawPost}
               </pre>
             )}
             {shotUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={shotUrl} alt="Original job post screenshot" loading="lazy" decoding="async" className="w-full rounded-lg border border-line" />
+              <img src={shotUrl} alt="Original job post screenshot" loading="lazy" decoding="async" className="max-h-96 max-w-full rounded-lg border border-line object-contain object-left-top" />
             )}
           </div>
-        </details>
+        </section>
       )}
 
       <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_260px] xl:gap-9">
         {/* Main column */}
         <div className="min-w-0 space-y-7">
-          {job.description && (
-            <DetailBlock label="Summary">
-              <p className="whitespace-pre-line text-[13px] leading-relaxed text-fg/90">{job.description}</p>
-            </DetailBlock>
-          )}
-
           {job.notes && (
             <DetailBlock label="Private notes">
               <p className="whitespace-pre-line text-[13px] leading-relaxed text-fg/90">{job.notes}</p>

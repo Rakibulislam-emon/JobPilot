@@ -173,7 +173,7 @@ function PriorityBadge({ priority }: { priority: number }) {
 }
 
 function companyMark(value: string): string {
-  return value.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("") || "?";
+  return value.trim().split(/\s+/).slice(0, 2).map((part) => Array.from(part)[0]?.toUpperCase() ?? "").join("") || "?";
 }
 
 export default async function JobsPage({
