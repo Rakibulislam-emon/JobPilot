@@ -21,13 +21,6 @@ const STATUSES: Status[] = [
   "skipped",
 ];
 
-const SKIP_REASONS = [
-  "Too far",
-  "Salary too low",
-  "Requirements don't match",
-  "Not interested",
-] as const;
-
 function str(fd: FormData, key: string): string {
   const v = fd.get(key);
   return typeof v === "string" ? v.trim() : "";
@@ -165,14 +158,19 @@ export async function saveJob(formData: FormData) {
 export async function updateStatus(
   jobId: string,
   status: Status,
-  skipReason?: string
+  skipReason?: string,
+  redirectToJobs = false
 ): Promise<{ ok: true } | { error: string }> {
   const user = await requireUser();
   const supabase = await createClient();
 
   if (!STATUSES.includes(status)) return { error: "Invalid job status." };
-  if (skipReason && !SKIP_REASONS.includes(skipReason as (typeof SKIP_REASONS)[number])) {
+  if (skipReason !== undefined && (typeof skipReason !== "string" || status !== "skipped")) {
     return { error: "Invalid skip reason." };
+  }
+  const normalizedSkipReason = skipReason?.trim() ?? "";
+  if (normalizedSkipReason.length > 500) {
+    return { error: "Skip reason must be 500 characters or fewer." };
   }
 
   const { data: previous } = await supabase
@@ -188,12 +186,15 @@ export async function updateStatus(
   if (status === "applied" && previous?.status !== "applied") {
     patch.applied_at = todayDateInput();
   }
-  if (status === "skipped" && skipReason) {
+  if (status === "skipped") {
     const aiMeta =
       previous.ai_meta && typeof previous.ai_meta === "object" && !Array.isArray(previous.ai_meta)
         ? previous.ai_meta
         : {};
-    patch.ai_meta = { ...aiMeta, skip_reason: skipReason };
+    const updatedAiMeta = { ...aiMeta };
+    if (normalizedSkipReason) updatedAiMeta.skip_reason = normalizedSkipReason;
+    else delete updatedAiMeta.skip_reason;
+    patch.ai_meta = Object.keys(updatedAiMeta).length > 0 ? updatedAiMeta : null;
   }
 
   const { error } = await supabase
@@ -215,6 +216,7 @@ export async function updateStatus(
   }
 
   revalidateAll();
+  if (redirectToJobs) redirect("/jobs");
   return { ok: true };
 }
 

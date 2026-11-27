@@ -2,6 +2,7 @@
 
 import { updateStatus } from "@/app/actions";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { STATUS_META, STATUS_ORDER } from "@/lib/constants";
 import type { Status } from "@/lib/types";
 import { cn } from "cn";
@@ -10,6 +11,7 @@ import { useState, useTransition } from "react";
 const SKIP_REASONS = [
   "Too far",
   "Salary too low",
+  "Deadline passed",
   "Requirements don't match",
   "Not interested",
 ] as const;
@@ -24,11 +26,12 @@ export function StatusSwitcher({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [choosingSkipReason, setChoosingSkipReason] = useState(false);
+  const [skipReason, setSkipReason] = useState("");
 
-  function moveToSkipped(reason?: string) {
+  function moveToSkipped(reason = skipReason) {
     startTransition(async () => {
       setError("");
-      const result = await updateStatus(jobId, "skipped", reason);
+      const result = await updateStatus(jobId, "skipped", reason, true);
       if ("error" in result) setError(result.error);
       else setChoosingSkipReason(false);
     });
@@ -56,7 +59,7 @@ export function StatusSwitcher({
                 setChoosingSkipReason(true);
                 return;
               }
-              const result = await updateStatus(jobId, s);
+              const result = await updateStatus(jobId, s, undefined, true);
               if ("error" in result) setError(result.error);
             })}
             className={cn(
@@ -81,7 +84,12 @@ export function StatusSwitcher({
       })}
       {choosingSkipReason && (
         <div className="mt-1 border-t border-line px-2.5 pt-2.5">
-          <p className="mb-2 text-[10.5px] text-muted">Skip reason (optional)</p>
+          <label
+            htmlFor={`skip-reason-${jobId}`}
+            className="mb-2 block text-[10.5px] text-muted"
+          >
+            Skip reason (optional)
+          </label>
           <div className="flex flex-wrap gap-1.5">
             {SKIP_REASONS.map((reason) => (
               <Button
@@ -90,19 +98,40 @@ export function StatusSwitcher({
                 variant="outline"
                 size="xs"
                 disabled={pending}
-                onClick={() => moveToSkipped(reason)}
+                onClick={() => setSkipReason(reason)}
                 className="h-auto min-h-6 whitespace-normal py-1 text-left text-[10.5px]"
               >
                 {reason}
               </Button>
             ))}
+          </div>
+          <Textarea
+            id={`skip-reason-${jobId}`}
+            value={skipReason}
+            onChange={(event) => setSkipReason(event.target.value)}
+            maxLength={500}
+            rows={3}
+            placeholder="Write why you're skipping this job…"
+            disabled={pending}
+            className="mt-2 min-h-16 resize-y bg-bg text-[12px] md:text-[12px]"
+          />
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <Button
+              type="button"
+              variant="default"
+              size="xs"
+              disabled={pending}
+              onClick={() => moveToSkipped()}
+            >
+              {pending ? "Saving…" : "Skip job"}
+            </Button>
             <Button
               type="button"
               variant="ghost"
               size="xs"
               disabled={pending}
-              onClick={() => moveToSkipped()}
               className="text-[10.5px]"
+              onClick={() => moveToSkipped("")}
             >
               Skip without reason
             </Button>

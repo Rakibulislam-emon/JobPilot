@@ -112,6 +112,7 @@ export default async function JobDetailPage({
 
   const aiMeta = job.ai_meta && typeof job.ai_meta === "object" ? job.ai_meta : {};
   const rawPost = typeof aiMeta.raw_post === "string" ? aiMeta.raw_post : "";
+  const skipReason = typeof aiMeta.skip_reason === "string" ? aiMeta.skip_reason : "";
   const applyLink =
     typeof aiMeta.apply_link === "string"
       ? getApplicationHref(aiMeta.apply_link)
@@ -234,6 +235,14 @@ export default async function JobDetailPage({
       <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_260px] xl:gap-9">
         {/* Main column */}
         <div className="min-w-0 space-y-7">
+          {job.status === "skipped" && skipReason && (
+            <DetailBlock label="Skip reason">
+              <p className="whitespace-pre-line break-words text-[13px] leading-relaxed text-fg/90">
+                {skipReason}
+              </p>
+            </DetailBlock>
+          )}
+
           {job.notes && (
             <DetailBlock label="Private notes">
               <p className="whitespace-pre-line text-[13px] leading-relaxed text-fg/90">{job.notes}</p>
